@@ -1489,6 +1489,12 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
          when HTTP_PATCH =>
             Do_Patch (Client);
       end case;
+   exception
+      when Content_Not_Ready =>
+         Continue (Client, Process_Request'Access);
+      when Error : others =>
+         Set_Failed (Client, Error);
+         raise;
    end Process_Request;
 
    procedure Process_Request_Line (Client : in out HTTP_Client'Class) is
