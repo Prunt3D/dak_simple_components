@@ -22,7 +22,14 @@ Tasking = ["Multiple", "Single"] # Default Multiple
 Traced_Objects = ["Off", "On"] # Default Off
 
 [gpr-set-externals]
-Target_OS = "auto"
-arch = "auto"
-odbc = "auto"
 Object_Dir = "nested"
+
+[gpr-set-externals."case(os)"]
+freebsd = { Target_OS = "FreeBSD" }
+linux   = { Target_OS = "Linux", odbc = "unixODBC" }
+macos   = { Target_OS = "OSX" }
+windows = { Target_OS = "Windows", odbc = "ODBC32" }
+
+[gpr-set-externals."case(word-size)"]
+bits-32 = { arch = "i686" }
+bits-64 = { arch = "x86_64" }
