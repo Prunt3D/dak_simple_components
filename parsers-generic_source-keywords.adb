@@ -1,9 +1,9 @@
 --                                                                    --
 --  procedure                       Copyright (c)  Dmitry A. Kazakov  --
 --     Parsers.Generic_Source.Keywords             Luebeck            --
---  Interface                                      Summer, 2005       --
+--  Implementation                                 Summer, 2005       --
 --                                                                    --
---                                Last revision :  11:37 13 Oct 2007  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --

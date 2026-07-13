@@ -3,7 +3,7 @@
 --  Interface                                      Luebeck            --
 --                                                 Winter, 2003       --
 --                                                                    --
---                                Last revision :  13:09 10 Mar 2013  --
+--                                Last revision :  11:56 03 Jul 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -138,6 +138,16 @@ package Stack_Storage is
 -- Storage_Size -- Overrides System.Storage_Pools...
 --
    function Storage_Size (Stack : Pool) return Storage_Count;
+--
+-- Top -- The address of the last allocated storage unit
+--
+--    Stack - The storage pool
+--
+-- Returns :
+--
+--    Null_Address if the stack is empty
+--
+   function Top (Stack : Pool) return Address;
 
 private
    type Block_Index is new Integer;

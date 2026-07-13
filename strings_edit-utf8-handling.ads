@@ -3,7 +3,7 @@
 --     Strings_Edit.UTF8.Handling                  Luebeck            --
 --  Interface                                      Spring, 2005       --
 --                                                                    --
---                                Last revision :  17:59 18 Aug 2022  --
+--                                Last revision :  10:38 30 Jan 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -25,7 +25,7 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 --
---  This package provides Y_Of between UTF-8 strings and standard
+--  This package provides conversions between UTF-8 strings and standard
 --  Ada's strings and characters. 
 --
 package Strings_Edit.UTF8.Handling is

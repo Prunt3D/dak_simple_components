@@ -3,7 +3,7 @@
 --  Interface                                      Luebeck            --
 --                                                 Winter, 2012       --
 --                                                                    --
---                                Last revision :  18:40 23 Oct 2021  --
+--                                Last revision :  15:55 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -510,6 +510,17 @@ package GNAT.Sockets.Server is
    function Get_IO_Timeout (Factory : Connections_Factory)
       return Duration;
 --
+-- Get_Keep_Host_Name -- Get factory setting
+--
+--    Factory - The factory object
+--
+-- Returns :
+--
+--    True if the host name will be stored in clients
+--
+   function Get_Keep_Host_Name (Factory : Connections_Factory)
+      return Boolean;
+--
 -- Get_Occurrence -- Get saved client error
 --
 --    Client - The client connection object
@@ -564,6 +575,20 @@ package GNAT.Sockets.Server is
    function Get_Server_Address
             (  Listener : Connections_Server
             )  return Sock_Addr_Type;
+--
+-- Get_Session_Host -- Get the server host name
+--
+--    Client - The connection object
+--
+-- This function returns the host name a client  is  connecting  to.  By
+-- default   the   host   name   is   not   kept.   Use   the  procedure
+-- Set_Keep_Host_Name to keep it.
+--
+-- Returns :
+--
+--    The host name or empty string
+--
+   function Get_Session_Host (Client : Connection) return String;
 --
 -- Get_Session_State -- Session state
 --
@@ -1072,6 +1097,20 @@ package GNAT.Sockets.Server is
                 Count  : Stream_Element_Count
              );
 --
+-- Set_Keep_Host_Name -- Keep host name
+--
+--    Factory - The factory object
+--    Enable  - Remember the host name, if true
+--
+-- By  default  the  host  name is not kept when resolved to an address.
+-- This behaviour can  be  changed  by  setting  Enable  to  true.  Then
+-- Get_Session_Host can be used later to retrieve the name.
+--
+   procedure Set_Keep_Host_Name
+             (  Factory : in out Connections_Factory;
+                Enable  : Boolean
+             );
+--
 -- Set_Overlapped_Size -- Read policy
 --
 --    Client - The client connection object
@@ -1535,6 +1574,7 @@ private
 --
    function Used (Buffer : Output_Buffer) return Stream_Element_Count;
 ------------------------------------------------------------------------
+   type String_Ptr is access String;
    type Connection_Action_Type is
         (  Keep_Connection,
            Reconnect_Connection,
@@ -1563,6 +1603,7 @@ private
       Transport        : Encoder_Ptr;
       Last_Error       : Exception_Occurrence;
       Client_Address   : Sock_Addr_Type;
+      Client_Host      : String_Ptr;
       Read             : Input_Buffer  (Input_Size);
       Written          : Output_Buffer (Output_Size);
       pragma Atomic (Data_Sent);
@@ -1652,9 +1693,9 @@ private
    type Connections_Factory is
       new Ada.Finalization.Limited_Controlled with
    record
-      Trace_Flags : Factory_Flags := 0;
-      Trace_File  : Ada.Text_IO.File_Type;
-
+      Trace_Flags    : Factory_Flags := 0;
+      Trace_File     : Ada.Text_IO.File_Type;
+      Keep_Host_Name : Boolean := False;
       pragma Atomic (Trace_Flags);
    end record;
 

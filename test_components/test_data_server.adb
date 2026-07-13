@@ -3,7 +3,7 @@
 --  Test server                                    Luebeck            --
 --                                                 Winter, 2012       --
 --                                                                    --
---                                Last revision :  13:13 14 Sep 2019  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -30,7 +30,6 @@ with Ada.Streams;                    use Ada.Streams;
 with Ada.Text_IO;                    use Ada.Text_IO;
 with GNAT.Sockets.Server;            use GNAT.Sockets.Server;
 with Strings_Edit.Integers;          use Strings_Edit.Integers;
-with Strings_Edit.Long_Floats;       use Strings_Edit.Long_Floats;
 with Strings_Edit.Quoted;            use Strings_Edit.Quoted;
 with Strings_Edit.Time_Conversions;  use Strings_Edit.Time_Conversions;
 with Test_Data_Servers;              use Test_Data_Servers;

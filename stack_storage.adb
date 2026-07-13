@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Winter, 2003       --
 --                                                                    --
---                                Last revision :  09:21 06 Oct 2019  --
+--                                Last revision :  10:48 02 Jul 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -115,7 +115,7 @@ package body Stack_Storage is
          declare
             This : Block renames Get (Stack.Blocks, Stack.Current).all;
          begin
-            if (  Place >= This.Memory (This.Memory'First)'Address
+            if (  Place >= This.Memory (1)'Address
                and then
                   Place <= This.Memory (This.Memory'Last)'Address
                )
@@ -124,8 +124,7 @@ package body Stack_Storage is
                -- Within the current segment. Free everything up to  the
                -- specified address in this segment and return.
                --
-               This.Free :=
-                  Place - This.Memory (This.Memory'First)'Address + 1;
+               This.Free := Place - This.Memory'Address + 1;
                return;
             else
                --
@@ -147,7 +146,7 @@ package body Stack_Storage is
                   end if;
                   Stack.Last := Stack.Last - 1;
                else
-                  This.Free := This.Memory'First;
+                  This.Free := 1;
                end if;
                if Stack.Current > 1 then
                   Stack.Current := Stack.Current - 1;
@@ -189,8 +188,8 @@ package body Stack_Storage is
       This : Block renames Get (Stack.Blocks, Block_Index (Index)).all;
    begin
       Size  := This.Size;
-      Used  := This.Size - This.Free + 1;
-      Start := This.Memory (This.Memory'First)'Address;
+      Used  := This.Free - 1;
+      Start := This.Memory'Address;
    end Get_Segment_Data;
 
    function Get_Segments_Number (Stack : Pool) return Natural is
@@ -202,5 +201,19 @@ package body Stack_Storage is
    begin
       return Stack.Total_Size;
    end Storage_Size;
+
+   function Top (Stack : Pool) return Address is
+   begin
+      for Index in reverse 1..Stack.Current loop
+         declare
+            This : Block renames Get (Stack.Blocks, Index).all;
+         begin
+            if This.Free > 1 then
+               return This.Memory (This.Free - 1)'Address;
+            end if;
+         end;
+      end loop;
+      return Null_Address;
+   end Top;
 
 end Stack_Storage;

@@ -9,7 +9,7 @@ project Components.OpenSSL is
    for Object_Dir use Components'Object_Dir;
 
    package Linker is
-      for Linker_Options use ("-lssl" , "-lcrypto");
+      for Linker_Options use ("-lssl", "-lcrypto");
    end Linker;
    
 end Components.OpenSSL;

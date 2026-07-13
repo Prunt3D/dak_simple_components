@@ -3,7 +3,7 @@
 --     Test_HTTPS_OpenSSL_Client                   Luebeck            --
 --  HTTPS OpenSSL client test                      Winter, 2019       --
 --                                                                    --
---                                Last revision :  14:41 03 Apr 2020  --
+--                                Last revision :  15:25 02 Jul 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -27,17 +27,13 @@
 
 with Ada.Exceptions;               use Ada.Exceptions;
 with Ada.Text_IO;                  use Ada.Text_IO;
-with Ada.Streams;                  use Ada.Streams;
---with GNAT.Exception_Traces;      use GNAT.Exception_Traces;
 with GNAT.Sockets.Server.Handles;  use GNAT.Sockets.Server.Handles;
 with GNAT.Sockets.Server.OpenSSL;  use GNAT.Sockets.Server.OpenSSL;
-with OpenSSL;                      use OpenSSL;
 with Strings_Edit.Integers;        use Strings_Edit.Integers;
 with Strings_Edit.Streams;         use Strings_Edit.Streams;
 with Test_HTTP_Servers.OpenSSL;    use Test_HTTP_Servers.OpenSSL;
 
 with GNAT.Sockets.Connection_State_Machine.HTTP_Client.Signaled;
-with GNAT.Sockets.Server.Pooled;
 
 procedure Test_HTTPS_OpenSSL_Client is
    use GNAT.Sockets.Connection_State_Machine.HTTP_Client.Signaled;

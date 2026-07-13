@@ -3,7 +3,7 @@
 --     Test_Parser_Stream_IO                       Luebeck            --
 --  Test program                                   Spring, 2010       --
 --                                                                    --
---                                Last revision :  23:22 29 Sep 2017  --
+--                                Last revision :  10:32 12 Jul 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of  the  GNU  Library  General  Public  --
@@ -38,19 +38,65 @@ use Parsers.Multiline_Source.Stream_IO;
 
 procedure Test_Parser_Stream_IO is
    Text : aliased String_Stream (1024);
+   Data : constant String :=
+                   (  "AAA" & LF
+                   &  "B" & CR & CR & LF
+                   &  LF
+                   &  CR & LF
+                   &  "C" & CR & "DEFGH" & LF
+                   &  EOT
+                   );
 begin
-   Set
-   (  Text,
-      (  "AAA" & LF
-      &  "B" & CR & CR & LF
-      &  LF
-      &  CR & LF
-      &  "C" & CR & "DEFGH" & LF
-      & EOT
-   )  );
+   Set (Text, Data);
+   if Unread (Text) /= Data then
+      declare
+         S : constant String := Unread (Text);
+      begin
+         if S'Length /= Data'Length then
+            Raise_Exception
+            (  Data_Error'Identity,
+               (  "Set text length"
+               &  Integer'Image (S'Length)
+               &  " /="
+               &  Integer'Image (Data'Length)
+               &  " (expected)"
+            )  );
+         end if;
+         for Index in S'Range loop
+            if S (Index) /= Data (Index - S'First + Data'First) then
+               Raise_Exception
+               (  Data_Error'Identity,
+                  (  "Set text at"
+                  &  Integer'Image (Index)
+                  &  " is unexpected"
+               )  );
+            end if;
+         end loop;
+         Raise_Exception
+         (  Data_Error'Identity,
+            "Set text failed"
+         );
+      end;
+   end if;
    declare
       Code : Stream_IO.Source (Text'Access);
    begin
+      declare
+         Line    : Line_Ptr;
+         Pointer : Integer;
+         Last    : Integer;
+      begin
+         Get_Line (Code, Line, Pointer, Last);
+         if Pointer /= 1 then
+            raise Data_Error;
+         end if;
+         if Last /= 3 then
+            Raise_Exception
+            (  Data_Error'Identity,
+               "Last =" & Integer'Image (Last) & " /= 3 (expected)"
+            );
+         end if;
+      end;
       if Get_Line (Code) /= "AAA" then
          raise Data_Error;
       end if;

@@ -28,16 +28,23 @@ project Components.SQLite is
       case Strings_Edit.Development is
          when "Debug" =>
             for Default_Switches ("C") use
-                (  "-g",
-                   "-fstack-check",
+                Components.Compiler'Default_Switches ("C") &
+                (  "-fstack-check",
                    "-Wall"
                 );
          when "Release" =>
             for Default_Switches ("C") use
+                Components.Compiler'Default_Switches ("C") &
                 (  "-O2"
+                );
+         when "Optimized" =>
+            for Default_Switches ("C") use
+                Components.Compiler'Default_Switches ("C") &
+                (  "-O3"
                 );
          when "Profile" =>
             for Default_Switches ("C") use
+                Components.Compiler'Default_Switches ("C") &
                 (  "-g",
                    "-pg"
                 );

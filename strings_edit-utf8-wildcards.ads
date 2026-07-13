@@ -3,7 +3,7 @@
 --     Strings_Edit.UTF8.Wildcards                 Luebeck            --
 --  Interface                                      Winter, 2007       --
 --                                                                    --
---                                Last revision :  22:44 07 Apr 2016  --
+--                                Last revision :  11:03 04 Dec 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --

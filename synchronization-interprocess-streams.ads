@@ -3,7 +3,7 @@
 --     Synchronization.Interprocess.               Luebeck            --
 --     Streams                                     Spring, 2018       --
 --  Interface                                                         --
---                                Last revision :  19:18 30 Apr 2018  --
+--                                Last revision :  17:48 17 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -355,7 +355,7 @@ package Synchronization.Interprocess.Streams is
 --
 -- Returns :
 --
---    THe stream end mode
+--    The stream end mode
 --
    function Get_Mode (Stream : Universal_Stream) return Stream_End;
 --

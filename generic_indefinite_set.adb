@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Spring, 2012       --
 --                                                                    --
---                                Last revision :  20:01 04 Apr 2016  --
+--                                Last revision :  11:58 28 Mar 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -330,7 +330,7 @@ package body Generic_Indefinite_Set is
    begin
       Inserted := False;
       Insert (Container, Item, Inserted, Location);
-      Inserted := not Inserted;
+      Inserted := Location < 0 and then not Inserted;
    end Insert;
 
    procedure Remove

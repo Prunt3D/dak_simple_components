@@ -3,7 +3,7 @@ project Tables is
    type Legacy_Type is ("Ada95", "Ada2005", "Ada2012");
    Legacy : Legacy_Type := external ("Legacy", "Ada2012");
 
-   type Development_Type is ("Debug", "Release", "Profile");
+   type Development_Type is ("Debug", "Release", "Optimized", "Profile");
    Development : Development_Type := external ("Development", "Debug");
 
    type OS_Type is
@@ -189,19 +189,39 @@ project Tables is
                    "-O2",
                    "-gnatn"
                 )  & GNAT_XX;
+         when "Optimized" =>
+            for Default_Switches ("ada") use
+                (  "-gnatwcikmoprvz.c.p.t.w.x",
+                   "-gnatp",
+                   "-gnatVaep",
+                   "-gnatf",
+                   "-gnatU",
+                   "-O3",
+                   "-gnatn"
+                )  & GNAT_XX;
          when "Profile" =>
             for Default_Switches ("ada") use
                 (  "-g",
                    "-pg"
                 )  & GNAT_XX;
       end case;
+      case Target_OS is
+          when "OSX" =>
+             for Default_Switches ("C") use
+                Compiler'Default_Switches ("C") &
+                (  "-isysroot",
+                   "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+                );
+          when others =>
+             null;
+       end case; 
    end Compiler;
 
    package Binder is
       case Development is
          when "Debug" =>
             for Default_Switches ("ada") use ("-Es");
-         when "Release" =>
+         when "Release" | "Optimized" =>
             for Default_Switches ("ada") use ();
          when others =>
             null;
@@ -212,7 +232,7 @@ project Tables is
       case Development is
          when "Debug" =>
             for Default_Switches ("ada") use ("-g");
-         when "Release" =>
+         when "Release" | "Optimized" =>
             for Default_Switches ("ada") use ("-s");
          when others =>
             null;
@@ -225,13 +245,18 @@ project Tables is
             for Default_Switches ("ada") use ("-g");
          when "Release" =>
             for Default_Switches ("ada") use ("-O2", "-s");
+         when "Optimized" =>
+            for Default_Switches ("ada") use ("-O3", "-s");
          when "Profile" =>
             for Default_Switches ("ada") use ("-g", "-pg");
       end case;
       case Target_OS is
          when "OSX" =>
             for Default_Switches ("Ada")
-              use Linker'Default_Switches ("Ada") & ("-Wl,-no_pie");
+               use Linker'Default_Switches ("Ada") &
+                   (  "-isysroot", 
+                      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+                   );
          when others =>
             null;
       end case;

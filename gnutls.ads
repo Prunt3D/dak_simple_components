@@ -3,7 +3,7 @@
 --  Interface                                      Luebeck            --
 --                                                 Winter, 2015       --
 --                                                                    --
---                                Last revision :  17:44 21 Jul 2018  --
+--                                Last revision :  18:45 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -417,8 +417,9 @@ package GNUTLS is
            TLS1_0,  -- TLS Version 1.0
            TLS1_1,  -- TLS Version 1.1
            TLS1_2,  -- TLS Version 1.2
-           DTLS1_0, -- DTLS Version 1.0
+           TLS1_3,  -- TLS Version 1.3
            DTLS0_9, -- DTLS Version 0.9 Cisco AnyConnect/OpenSSL 0.9.8e
+           DTLS1_0, -- DTLS Version 1.0
            DTLS1_2, -- DTLS Version 1.2
            Version_Unknown -- Unknown SSL/TLS Version
         );
@@ -428,16 +429,17 @@ package GNUTLS is
           TLS1_0      => 2,
           TLS1_1      => 3,
           TLS1_2      => 4,
-          DTLS0_9     => 6, -- FIXME: at some point change it to 200
-          DTLS1_0     => 5,	-- 201
+          TLS1_3      => 5,
+          DTLS0_9     => 200,
+          DTLS1_0     => 201,
           DTLS1_2     => 202,
           Version_Unknown => 16#FF# -- Change it to 16#FFFF#
        );
    pragma Convention (C, Protocol);
    TLS1             : constant Protocol := TLS1_0;
-   DTLS_Version_Min : constant Protocol := DTLS1_0;
+   DTLS_Version_Min : constant Protocol := DTLS0_9;
    DTLS_Version_Max : constant Protocol := DTLS1_2;
-   TLS_Version_Max  : constant Protocol := TLS1_2;
+   TLS_Version_Max  : constant Protocol := TLS1_3;
    type Protocol_Array is array (Positive range <>) of aliased Protocol;
 --
 -- Enumeration of different certificate types
@@ -696,6 +698,24 @@ package GNUTLS is
    Init_Nonblock             : constant Init_Flags := 2**3;
    Init_No_Extensions        : constant Init_Flags := 2**4;
    Init_No_Replay_Protection : constant Init_Flags := 2**5;
+   Init_No_Signal            : constant Init_Flags := 2**6;
+   Init_Allow_ID_Change      : constant Init_Flags := 2**7;
+   Init_Enable_False_Start   : constant Init_Flags := 2**8;
+   Init_Force_Client_Cert    : constant Init_Flags := 2**9;
+   Init_No_Tickets           : constant Init_Flags := 2**10;
+   Init_Key_Share_Top        : constant Init_Flags := 2**11;
+   Init_Key_Share_Top1       : constant Init_Flags := 2**12;
+   Init_Key_Share_Top2       : constant Init_Flags := 2**13;
+   Init_Post_Handshale_Auth  : constant Init_Flags := 2**14;
+   Init_No_Auto_Rekey        : constant Init_Flags := 2**15;
+   Init_Safe_Padding_Check   : constant Init_Flags := 2**16;
+   Init_Enable_Early_Start   : constant Init_Flags := 2**17;
+   Init_Enable_Rawpk         : constant Init_Flags := 2**18;
+   Init_Auto_Reauth          : constant Init_Flags := 2**19;
+   Init_Enable_Early_Data    : constant Init_Flags := 2**20;
+   Init_No_Auto_Send_Ticket  : constant Init_Flags := 2**21;
+   Init_No_End_Of_Early_Data : constant Init_Flags := 2**22;
+   Init_No_Tickets_TLS12     : constant Init_Flags := 2**23;
 
    type Session_Type (Flags : Init_Flags) is limited private;
    type Session_Type_Ptr is access all Session_Type;
@@ -1996,7 +2016,7 @@ package GNUTLS is
 --
 -- Check_Version -- Check version
 --
---    Version - Required version
+--  [ Version ] - Required version
 --
 -- Check  that the version of the library is at minimum the one given as
 -- a string in Version and return  the  actual  version  string  of  the
@@ -2011,6 +2031,7 @@ package GNUTLS is
 --    End_Error - Condition is not met
 --
    function Check_Version (Version : String) return String;
+   function Check_Version return String;
 --
 -- Cipher_Get -- Get currently used cipher
 --
@@ -3458,6 +3479,32 @@ package GNUTLS is
             (  Session : Session_Type
             )  return Boolean;
 --
+-- Server_Name_Get -- Get the server name used for TLS handshake
+--
+--    Session - The session
+--
+-- Returns :
+--
+--    The name sent by the client
+--
+   function Server_Name_Get (Session : Session_Type) return String;
+--
+-- Server_Name_Set -- Set server name for TLS handshake
+--
+--    Session - The session
+--    Name    - THe server name
+--
+-- This procedure  is used  to support  the  the  Server Name Indication
+-- (SNI) extension. It is to be used by clients that want to inform (via
+-- a TLS extension mechanism) the server of  the name they connected to.
+-- This should  be used  by clients  that  connect  to  servers  that do
+-- virtual hosting.
+--
+   procedure Server_Name_Set
+             (  Session : in out Session_Type;
+                Name    : String
+             );
+--
 -- Sec_Param_Get_Name -- Get security parameter name
 --
 --    Param - A security parameter
@@ -3668,6 +3715,30 @@ package GNUTLS is
 -- instead.
 --
    procedure Set_Default_Priority (Session : in out Session_Type);
+--
+-- Set_Default_Priority_Append -- Add default parameters
+--
+--    Session    - The session
+--    Priorities - To add
+--
+-- This procedure sets the default priority on the ciphers, key exchange
+-- methods, and macs with the additional options in Priorities. This  is
+-- the  recommended  method  of  setting  the  defaults  when  only  few
+-- additional options are to be added. This promotes consistency between
+-- applications using GnuTLS, and allows GnuTLS  using  applications  to
+-- update settings in par with the library.
+--    The  Priorities  string  should start as a normal priority string,
+-- e.g., with ':'.
+--
+-- Exceptions :
+--
+--    Use_Error - The current  version  of GNUTLS  does  not privde this
+--                feature
+--
+   procedure Set_Default_Priority_Append
+             (  Session    : in out Session_Type;
+                Priorities : String
+             );
 --
 -- Set_TLS_Debug -- Enable or disable TLS debug and audit tracing
 --

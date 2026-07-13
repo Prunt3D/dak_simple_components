@@ -3,7 +3,7 @@
 --  MODBUS client test                             Luebeck            --
 --                                                 Spring, 2015       --
 --                                                                    --
---                                Last revision :  09:02 17 Oct 2020  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -27,12 +27,10 @@
 
 with Ada.Exceptions;               use Ada.Exceptions;
 with Ada.Text_IO;                  use Ada.Text_IO;
-with Ada.Text_IO.Text_Streams;     use Ada.Text_IO.Text_Streams;
 with GNAT.Sockets.Server;          use GNAT.Sockets.Server;
 with GNAT.Sockets.Server.Handles;  use GNAT.Sockets.Server.Handles;
 with Interfaces;                   use Interfaces;
 with Strings_Edit.Integers;        use Strings_Edit.Integers;
-with Strings_Edit.Streams;         use Strings_Edit.Streams;
 
 with GNAT.Sockets.Connection_State_Machine.MODBUS_Client.Synchronous;
 with GNAT.Serial_Communications;

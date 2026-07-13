@@ -3,7 +3,7 @@
 --     Test_ODBC_Persistence                       Luebeck            --
 --  Implementation                                 Winter, 2004       --
 --                                                                    --
---                                Last revision :  23:22 29 Sep 2017  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -25,7 +25,6 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 
-with Ada.Exceptions;            use Ada.Exceptions;
 with Ada.Text_IO;               use Ada.Text_IO;
 with Deposit_Handles;           use Deposit_Handles;
 with Persistent.Directory;      use Persistent.Directory;
@@ -60,7 +59,7 @@ begin
    end;
    Put_Line ("Session 2");
    declare
-      DB   : Storage_Handle := Open;
+      DB   : constant Storage_Handle := Open;
       Root : Handle;
    begin
       Root := Get (DB, Object_Name);
@@ -78,7 +77,7 @@ begin
    end;
    Put_Line ("Session 4");
    declare
-      DB   : Storage_Handle := Open;
+      DB   : constant Storage_Handle := Open;
       Dir  : Handle;
       Root : Handle;
    begin

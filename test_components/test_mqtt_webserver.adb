@@ -3,7 +3,7 @@
 --  Test                                           Luebeck            --
 --                                                 Spring, 2017       --
 --                                                                    --
---                                Last revision :  23:22 29 Sep 2017  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -29,12 +29,9 @@ with Ada.Exceptions;               use Ada.Exceptions;
 with Ada.Text_IO;                  use Ada.Text_IO;
 with GNAT.Sockets.MQTT.Server;     use GNAT.Sockets.MQTT.Server;
 with GNAT.Sockets.Server;          use GNAT.Sockets.Server;
-with GNAT.Sockets.Server.Handles;  use GNAT.Sockets.Server.Handles;
 with Strings_Edit.Integers;        use Strings_Edit.Integers;
 with Test_HTTP_MQTT_Servers;       use Test_HTTP_MQTT_Servers;
 with Test_MQTT_Servers;            use Test_MQTT_Servers;
-
-with GNAT.Exception_Traces;
 
 procedure Test_MQTT_WebServer is
    Try_Count : constant := 30;

@@ -3,7 +3,7 @@
 --     Test_ELV_MAX_Cube_Client                    Luebeck            --
 --  ELV MAX! Cube client test                      Summer, 2015       --
 --                                                                    --
---                                Last revision :  13:13 14 Sep 2019  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --

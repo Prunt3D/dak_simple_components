@@ -231,7 +231,7 @@ package body Py.Class is
          return -1;
    end Set_Y;
 
-   GetSets : array (1..3) of aliased GetSetDef := -- Must be exist when
+   GetSets : array (1..3) of aliased GetSetDef := -- Must exist when
              (  (  Name    => New_String ("x"),   -- the type does
                    Get     => Get_X'Access,
                    Set     => Set_X'Access,
@@ -259,7 +259,7 @@ package body Py.Class is
       Result  : Handle;
       Module  : Handle;
       Doc     : aliased char_array := "point example" & NUL;
-      Slots   : array (1..5) of aliased Type_Slot :=
+       Slots   : array (1..5) of aliased Type_Slot :=
          (  (tp_doc,     (tp_doc, To_Chars_Ptr (Doc'Unchecked_Access))),
             (tp_new,     (tp_new,     New_Instance'Access)),
             (tp_getset,  (tp_getset,  GetSets (1)'Unchecked_Access)),

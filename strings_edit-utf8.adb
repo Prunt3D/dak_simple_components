@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Spring, 2005       --
 --                                                                    --
---                                Last revision :  22:44 07 Apr 2016  --
+--                                Last revision :  12:14 29 Mar 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -25,9 +25,49 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 
-with Ada.IO_Exceptions;    use Ada.IO_Exceptions;
+with Ada.IO_Exceptions;  use Ada.IO_Exceptions;
 
 package body Strings_Edit.UTF8 is
+
+   function Compare (Left, Right : UTF8_Code_Point_Array)
+      return Precedence is
+   begin
+      if Right'Length = 0 then
+         if Left'Length = 0 then
+            return Equal;
+         else
+            return Greater;
+         end if;
+      elsif Left'Length = 0 then
+         return Less;
+      end if;
+      declare
+         I : Integer := Left'First;
+         J : Integer := Right'First;
+      begin
+         loop
+            if Left (I) < Right (J) then
+               return Less;
+            elsif Left (I) > Right (J) then
+               return Greater;
+            end if;
+            if I = Left'Last then
+               if J = Right'Last then
+                  return Equal;
+               else
+                  return Less;
+               end if;
+            else
+               if J = Right'Last then
+                  return Greater;
+               else
+                  I := I + 1;
+                  J := J + 1;
+               end if;
+            end if;
+         end loop;
+      end;
+   end Compare;
 
    procedure Get
              (  Source  : String;
@@ -171,7 +211,17 @@ package body Strings_Edit.UTF8 is
       Pointer : Integer := Result'First;
    begin
       Put (Result, Pointer, Value);
-      return Result (1..Pointer - 1);
+      return Result (Result'First..Pointer - 1);
+   end Image;
+
+   function Image (Value : UTF8_Code_Point_Array) return String is
+      Result  : String (1..4 * Value'Length);
+      Pointer : Integer := Result'First;
+   begin
+      for Index in Value'Range loop
+         Put (Result, Pointer, Value (Index));
+      end loop;
+      return Result (Result'First..Pointer - 1);
    end Image;
 
    function Length (Source : String) return Natural is
@@ -255,6 +305,27 @@ package body Strings_Edit.UTF8 is
          Pointer := Pointer - 1;
       end loop;
    end Reverse_Put;
+
+   function Size (Value : UTF8_Code_Point) return Positive is
+      Result  : String (1..4);
+      Pointer : Integer := Result'First;
+   begin
+      Put (Result, Pointer, Value);
+      return Pointer - 1;
+   end Size;
+
+   function Size (Value : UTF8_Code_Point_Array) return Natural is
+      Count   : Natural := 0;
+      Result  : String (1..4);
+      Pointer : Integer;
+   begin
+      for Index in Value'Range loop
+         Pointer := Result'First;
+         Put (Result, Pointer, Value (Index));
+         Count := Count + Pointer - 1;
+      end loop;
+      return Count;
+   end Size;
 
    procedure Skip
              (  Source  : String;

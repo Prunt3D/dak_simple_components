@@ -10,20 +10,9 @@ project Components.SQLite.Benchmark_Tests is
    for Main use ("test_sqlite_benchmark.adb");
    for Object_Dir use Components.Object_Dir_Path;
 
-   package Compiler is
-      for Default_Switches ("ada") use Components.SQLite.Compiler'Default_Switches ("ada");
-   end Compiler;
-
-   package Binder is
-      for Default_Switches ("ada") use Components.SQLite.Binder'Default_Switches ("ada");
-   end Binder;
-
-   package Builder is
-      for Default_Switches ("ada") use Components.SQLite.Builder'Default_Switches ("ada");
-   end Builder;
-
-   package Linker is
-      for Default_Switches ("ada") use Components.SQLite.Linker'Default_Switches ("ada");
-   end Linker;
+   package Compiler renames Components.SQLite.Compiler;
+   package Binder   renames Components.SQLite.Binder;
+   package Builder  renames Components.SQLite.Builder;
+   package Linker   renames Components.SQLite.Linker;
 
 end Components.SQLite.Benchmark_Tests;

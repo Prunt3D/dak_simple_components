@@ -3,7 +3,7 @@
 --     Synchronization.Windows                     Luebeck            --
 --  Interface                                      Spring, 2018       --
 --                                                           --
---                                Last revision :  22:08 06 Jan 2020  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -28,12 +28,11 @@
 --  This package  provides  binding to some Windows API functions useful
 --  to communicate between processes.
 --
-with Ada.Exceptions;           use Ada.Exceptions;
-with Interfaces;               use Interfaces;
-with Interfaces.C;             use Interfaces.C;
-with Interfaces.C.Strings;     use Interfaces.C.Strings;
-with System;                   use System;
-with System.Storage_Elements;  use System.Storage_Elements;
+with Ada.Exceptions;         use Ada.Exceptions;
+with Interfaces;             use Interfaces;
+with Interfaces.C;           use Interfaces.C;
+with Interfaces.C.Strings;   use Interfaces.C.Strings;
+with System;                 use System;
 
 package Synchronization.Windows is
 
@@ -41,6 +40,7 @@ package Synchronization.Windows is
    type HANDLE is new ptrdiff_t;
    type HANDLE_Ptr is access all HANDLE;
    type DWORD  is new unsigned_long;
+
    type SECURITY_ATTRIBUTES is record
       Length             : DWORD;
       SecurityDescriptor : Address;
@@ -50,6 +50,7 @@ package Synchronization.Windows is
    type SECURITY_ATTRIBUTES_Ptr is access all SECURITY_ATTRIBUTES;
 
    INVALID_HANDLE_VALUE    : constant HANDLE := -1;
+   HANDLE_NULL             : constant HANDLE := 0;
 
    PAGE_NOACCESS           : constant := 16#1#;
    PAGE_READONLY           : constant := 16#2#;
@@ -98,7 +99,7 @@ package Synchronization.Windows is
    function CreateMutex
             (  MutexAttributes : SECURITY_ATTRIBUTES_Ptr := null;
                InitialOwner    : BOOL                    := 0;
-               Name            :chars_ptr                := Null_Ptr
+               Name            : chars_ptr               := Null_Ptr
             )  return HANDLE;
 
    DUPLICATE_CLOSE_SOURCE : constant := 16#1#;
@@ -359,6 +360,7 @@ package Synchronization.Windows is
    ERROR_ARITHMETIC_OVERFLOW               : constant := 534;
    ERROR_PIPE_CONNECTED                    : constant := 535;
    ERROR_PIPE_LISTENING                    : constant := 536;
+   ERROR_ABANDONED_WAIT_0                  : constant := 735;
    ERROR_EA_ACCESS_DENIED                  : constant := 994;
    ERROR_OPERATION_ABORTED                 : constant := 995;
    ERROR_IO_INCOMPLETE                     : constant := 996;

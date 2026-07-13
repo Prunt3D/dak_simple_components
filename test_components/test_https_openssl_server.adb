@@ -3,7 +3,7 @@
 --     Test_HTTPS_OpenSSL_Server                   Luebeck            --
 --  HTTPS OpenSSL server test                      Winter, 2019       --
 --                                                                    --
---                                Last revision :  16:05 08 Jun 2019  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -28,13 +28,11 @@
 with Ada.Exceptions;               use Ada.Exceptions;
 with Ada.Text_IO;                  use Ada.Text_IO;
 with Ada.Streams;                  use Ada.Streams;
---with GNAT.Exception_Traces;      use GNAT.Exception_Traces;
 with GNAT.Sockets.Server.OpenSSL;  use GNAT.Sockets.Server.OpenSSL;
 with OpenSSL;                      use OpenSSL;
 with Strings_Edit.Integers;        use Strings_Edit.Integers;
 with Test_HTTP_Servers.OpenSSL;    use Test_HTTP_Servers.OpenSSL;
 
-with GNAT.Sockets.Server.Pooled;
 
 procedure Test_HTTPS_OpenSSL_Server is
    Minutes : constant := 3.0; -- * 60.0 * 24.0 * 10.0;

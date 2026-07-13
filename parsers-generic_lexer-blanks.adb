@@ -3,7 +3,7 @@
 --     Parsers.Generic_Lexer.Blanks                Luebeck            --
 --  Implementation                                 Winter, 2004       --
 --                                                                    --
---                                Last revision :  11:37 13 Oct 2007  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -36,6 +36,15 @@ package body Parsers.Generic_Lexer.Blanks is
                 Code    : in out Source_Type;
                 Got_It  : out Boolean
              )  is
+   begin
+      Skip (Code, Got_It);
+   end Get_Blank;
+
+   procedure Get_Blank
+             (  Context : in out Lexer;
+                Code    : in out Source_Type
+             )  is
+      Got_It : Boolean;
    begin
       Skip (Code, Got_It);
    end Get_Blank;

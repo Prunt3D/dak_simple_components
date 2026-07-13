@@ -3,7 +3,7 @@
 --     Parsers.JSON                                Luebeck            --
 --  Implementation                                 Autumn, 2019       --
 --                                                                    --
---                                Last revision :  13:13 14 Sep 2019  --
+--                                Last revision :  12:17 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -25,15 +25,257 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 
+with Ada.Exceptions;            use Ada.Exceptions;
 with Ada.IO_Exceptions;         use Ada.IO_Exceptions;
 with Strings_Edit.Fields;       use Strings_Edit.Fields;
 with Strings_Edit.Integers;     use Strings_Edit.Integers;
 with Strings_Edit.Long_Floats;  use Strings_Edit.Long_Floats;
+with Strings_Edit.Quoted;       use Strings_Edit.Quoted;
 with Strings_Edit.UTF8;         use Strings_Edit.UTF8;
 
 with Strings_Edit.UTF8.Categorization;
 
 package body Parsers.JSON is
+
+   Invalid_Index : constant String := "Invalid index";
+   No_Key        : constant String := "No key ";
+   Not_An_Object : constant String := "Not a JSON object";
+   Not_An_Array  : constant String := "Not a JSON array";
+   Not_A_Boolean : constant String := "Not a JSON Boolean";
+   Not_A_Number  : constant String := "Not a JSON number";
+   Not_A_String  : constant String := "Not a JSON string";
+
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return Boolean is
+      Map : JSON_Pair_Array renames Value.all;
+   begin
+      for Index in Map'Range loop
+         if Map (Index).Name.all = Key then
+            if Map (Index).Value.JSON_Type /= JSON_Boolean then
+               Raise_Exception
+                (  Constraint_Error'Identity,
+                   Not_A_Boolean
+                );
+            end if;
+            return Map (Index).Value.Condition;
+         end if;
+      end loop;
+      Raise_Exception (End_Error'Identity, No_Key & Quote (Key));
+      return False;
+   end "/";
+
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return JSON_Value_Type is
+      Map : JSON_Pair_Array renames Value.all;
+   begin
+      for Index in Map'Range loop
+         if Map (Index).Name.all = Key then
+            return Map (Index).Value.JSON_Type;
+         end if;
+      end loop;
+      Raise_Exception (End_Error'Identity, No_Key & Quote (Key));
+      return JSON_Null;
+   end "/";
+
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return JSON_Value is
+      Map : JSON_Pair_Array renames Value.all;
+   begin
+      for Index in Map'Range loop
+         if Map (Index).Name.all = Key then
+            return Map (Index).Value;
+         end if;
+      end loop;
+      Raise_Exception (End_Error'Identity, No_Key & Quote (Key));
+      return (JSON_Type => JSON_Null);
+   end "/";
+
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return Long_Float is
+      Map : JSON_Pair_Array renames Value.all;
+   begin
+      for Index in Map'Range loop
+         if Map (Index).Name.all = Key then
+            if Map (Index).Value.JSON_Type /= JSON_Number then
+               Raise_Exception
+               (  Constraint_Error'Identity,
+                  Not_A_Number
+               );
+            end if;
+            return Map (Index).Value.Value;
+         end if;
+      end loop;
+      Raise_Exception (End_Error'Identity, No_Key & Quote (Key));
+      return 0.0;
+   end "/";
+
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return String is
+      Map : JSON_Pair_Array renames Value.all;
+   begin
+      for Index in Map'Range loop
+         if Map (Index).Name.all = Key then
+            if Map (Index).Value.JSON_Type /= JSON_String then
+               Raise_Exception
+               (  Constraint_Error'Identity,
+                  Not_A_String
+                );
+            end if;
+            return Map (Index).Value.Text.all;
+         end if;
+      end loop;
+      Raise_Exception (End_Error'Identity, No_Key & Quote (Key));
+      return "";
+   end "/";
+
+   function "/" (Value : JSON_Value; Key : String) return Boolean is
+   begin
+      if Value.JSON_Type /= JSON_Object then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Object);
+      end if;
+      return Value.Map / Key;
+   end "/";
+
+   function "/" (Value : JSON_Value; Key : String)
+      return JSON_Value_Type is
+   begin
+      if Value.JSON_Type /= JSON_Object then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Object);
+      end if;
+      return Value.Map / Key;
+   end "/";
+
+   function "/" (Value : JSON_Value; Key : String) return JSON_Value is
+   begin
+      if Value.JSON_Type /= JSON_Object then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Object);
+      end if;
+      return Value.Map / Key;
+   end "/";
+
+   function "/" (Value : JSON_Value; Key : String) return Long_Float is
+   begin
+      if Value.JSON_Type /= JSON_Object then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Object);
+      end if;
+      return Value.Map / Key;
+   end "/";
+
+   function "/" (Value : JSON_Value; Key : String) return String is
+   begin
+      if Value.JSON_Type /= JSON_Object then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Object);
+      end if;
+      return Value.Map / Key;
+   end "/";
+
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return Boolean is
+      Sequence : JSON_Sequence renames Value.all;
+   begin
+      if Index not in Sequence'Range then
+         Raise_Exception (Constraint_Error'Identity, Invalid_Index);
+      elsif Sequence (Index).JSON_Type /= JSON_Boolean then
+         Raise_Exception
+         (  Constraint_Error'Identity,
+            Not_A_Boolean
+         );
+      end if;
+      return Sequence (Index).Condition;
+   end "/";
+
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return JSON_Value_Type is
+      Sequence : JSON_Sequence renames Value.all;
+   begin
+      if Index not in Sequence'Range then
+         Raise_Exception (Constraint_Error'Identity, Invalid_Index);
+      end if;
+      return Sequence (Index).JSON_Type;
+   end "/";
+
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return JSON_Value is
+      Sequence : JSON_Sequence renames Value.all;
+   begin
+      if Index not in Sequence'Range then
+         Raise_Exception (Constraint_Error'Identity, Invalid_Index);
+      end if;
+      return Sequence (Index);
+   end "/";
+
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return Long_Float is
+      Sequence : JSON_Sequence renames Value.all;
+   begin
+      if Index not in Sequence'Range then
+         Raise_Exception (Constraint_Error'Identity, Invalid_Index);
+      elsif Sequence (Index).JSON_Type /= JSON_Number then
+         Raise_Exception
+         (  Constraint_Error'Identity,
+            Not_A_Number
+         );
+      end if;
+      return Sequence (Index).Value;
+   end "/";
+
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return String is
+      Sequence : JSON_Sequence renames Value.all;
+   begin
+      if Index not in Sequence'Range then
+         Raise_Exception (Constraint_Error'Identity, Invalid_Index);
+      elsif Sequence (Index).JSON_Type /= JSON_String then
+         Raise_Exception
+         (  Constraint_Error'Identity,
+            Not_A_String
+         );
+      end if;
+      return Sequence (Index).Text.all;
+   end "/";
+
+   function "/" (Value : JSON_Value; Index : Positive) return Boolean is
+   begin
+      if Value.JSON_Type /= JSON_Array then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Array);
+      end if;
+      return Value.Sequence / Index;
+   end "/";
+
+   function "/" (Value : JSON_Value; Index : Positive)
+      return JSON_Value_Type is
+   begin
+      if Value.JSON_Type /= JSON_Array then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Object);
+      end if;
+      return Value.Sequence / Index;
+   end "/";
+
+   function "/" (Value : JSON_Value; Index : Positive)
+      return JSON_Value is
+   begin
+      if Value.JSON_Type /= JSON_Array then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Array);
+      end if;
+      return Value.Sequence / Index;
+   end "/";
+
+   function "/" (Value : JSON_Value; Index : Positive)
+      return Long_Float is
+   begin
+      if Value.JSON_Type /= JSON_Array then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Array);
+      end if;
+      return Value.Sequence / Index;
+   end "/";
+
+   function "/" (Value : JSON_Value; Index : Positive) return String is
+   begin
+      if Value.JSON_Type /= JSON_Array then
+         Raise_Exception (Constraint_Error'Identity, Not_An_Array);
+      end if;
+      return Value.Sequence / Index;
+   end "/";
 
    function "and" (Left, Right : Operations) return Boolean is
    begin

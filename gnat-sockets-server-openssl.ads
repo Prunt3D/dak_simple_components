@@ -3,7 +3,7 @@
 --     GNAT.Sockets.Server.OpenSSL                 Luebeck            --
 --  Interface                                      Winter, 2019       --
 --                                                                    --
---                                Last revision :  09:42 12 Dec 2020  --
+--                                Last revision :  12:17 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -588,9 +588,9 @@ package GNAT.Sockets.Server.OpenSSL is
 --
 -- Set_TLS_Tracing -- Enable or disable TLS tracing
 --
---   Factory - The OpenSSL connection factory
---   Session - True if tracing of session state
---   Decoded - True if tracing decoded content must be enabled
+--    Factory - The OpenSSL connection factory
+--    Session - True if tracing of session state
+--    Decoded - True if tracing decoded content must be enabled
 --
 -- This  procedure  is used  to enable  or disable  tracing  of security
 -- actions.
@@ -600,6 +600,13 @@ package GNAT.Sockets.Server.OpenSSL is
                 Session : Boolean;
                 Decoded : Boolean
              );
+--
+-- Set_TLSext_Host_Name -- Enable or disable TLS tracing
+--
+--    Session - The OpenSSL session
+--    Name    - The host name
+--
+   procedure Set_TLSext_Host_Name (Session : SSL; Name : String);
 --
 -- Use_Certificate_ASN1 -- Of a context
 --
@@ -837,6 +844,27 @@ package GNAT.Sockets.Server.OpenSSL is
                 Context : Context_Type;
                 File    : String
              );
+--
+-- Enable_SSL_Trace -- Enable SSL tracing
+--
+--    File - The trace file
+--
+-- This procedure  enables SSL tracing.  This feature  requires that the
+-- OpenSSL library were built with  the 'enable-ssl-trace' option of the
+-- configure script.
+--
+-- Exceptions :
+--
+--    Use_Error - No tracing supported
+--
+   procedure Enable_SSL_Trace
+             (  File : Ada.Text_IO.File_Access :=
+                       Ada.Text_IO.Standard_Output
+             );
+--
+-- Disable_SSL_Trace -- Disable SSL tracing
+--
+   procedure Disable_SSL_Trace;
 
 private
    type Abstract_OpenSSL_Factory
@@ -853,6 +881,7 @@ private
                 Context : Context_Type
              );
    procedure Finalize (Factory : in out Abstract_OpenSSL_Factory);
+   procedure Initialize (Factory : in out Abstract_OpenSSL_Factory);
 
    type OpenSSL_Session_State is (TLS_Handshake, TLS_Exchange);
 
@@ -864,6 +893,7 @@ private
       SSL_Session : SSL := No_SSL;
       Input       : BIO := No_BIO;
       Output      : BIO := No_BIO;
+      SSL_Trace   : BIO := No_BIO;
       State       : OpenSSL_Session_State := TLS_Handshake;
    end record;
    procedure Finalize (Session : in out OpenSSL_Session);
@@ -944,5 +974,24 @@ private
                written : access size_t
             )  return int;
    pragma Convention (C, BIO_Write);
+
+   function BIO_Trace_Puts
+            (  b    : BIO;
+               data : Stream_Element_Pointers.Pointer
+            )  return int;
+   pragma Convention (C, BIO_Trace_Puts);
+
+   function BIO_Trace_Write
+            (  b       : BIO;
+               data    : System.Address;
+               dlen    : int
+            )  return int;
+   function BIO_Trace_Write
+            (  b       : BIO;
+               data    : System.Address;
+               dlen    : size_t;
+               written : access size_t
+            )  return int;
+   pragma Convention (C, BIO_Trace_Write);
 
 end GNAT.Sockets.Server.OpenSSL;

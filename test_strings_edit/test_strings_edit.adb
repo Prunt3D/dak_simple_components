@@ -1060,14 +1060,15 @@ begin
    Test_Compare ("abc", "ab1", Less, Less);
    Test_Compare ("ab44", "ab0123", Equal, Less);
 
-   Test_Match ("AbC", "abc", True, True);
-   Test_Match ("AbC", "a*c", True, True);
-   Test_Match ("Ab   C", "aB c", True, True);
-   Test_Match ("Ab   C", "aB c", False, False);
+   Test_Match ("AbC",   "abc",    True,  True);
+   Test_Match ("AbC",   "a*c",    True,  True);
+   Test_Match ("Ab   C", "aB c",  True,  True);
+   Test_Match ("Ab   C", "aB c",  False, False);
+   Test_Match ("AbBhC",  "A*B*C", False, True);
 
-   Test_Match_Sensitive ("AbC", "AbC", True, True);
-   Test_Match_Sensitive ("AbC", "A*C", True, True);
-   Test_Match_Sensitive ("Ab   C", "Ab C", True, True);
+   Test_Match_Sensitive ("AbC",    "AbC",  True,  True);
+   Test_Match_Sensitive ("AbC",    "A*C",  True,  True);
+   Test_Match_Sensitive ("Ab   C", "Ab C", True,  True);
    Test_Match_Sensitive ("Ab   C", "Ab C", False, False);
 
    Put_Line ("... Done");

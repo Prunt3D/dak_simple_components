@@ -3,7 +3,7 @@
 --  Test                                           Luebeck            --
 --                                                 Autumn, 2014       --
 --                                                                    --
---                                Last revision :  18:00 18 Aug 2022  --
+--                                Last revision :  17:53 15 Jan 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -1008,7 +1008,7 @@ begin
                 )  is
          use Test_Integer_B_Trees;
          Result : Min_Max := (Integer'Last, Integer'First);
-         Length : Natural := Get_Bucket_Size (Root);
+         Length : constant Natural := Get_Bucket_Size (Root);
          Child  : Item_Ptr;
          This   : Min_Max;
       begin

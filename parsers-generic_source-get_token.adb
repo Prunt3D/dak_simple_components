@@ -3,7 +3,7 @@
 --     Parsers.Generic_Source.Get_Token            Luebeck            --
 --  Implementation                                 Summer, 2005       --
 --                                                                    --
---                                Last revision :  11:37 13 Oct 2007  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -39,9 +39,10 @@ procedure Parsers.Generic_Source.Get_Token
    Last    : Integer;
 begin
    Get_Line (Code, Line, Pointer, Last);
-   Get (Line (Line'First..Last), Pointer, Folder, Token);
-   Got_It := True;
-   Set_Pointer (Code, Pointer);
+   Get (Line (Pointer..Last), Pointer, Folder, Token, Got_It);
+   if Got_It then
+      Set_Pointer (Code, Pointer);
+   end if;
 exception
    when End_Error =>
       Got_It := False;   

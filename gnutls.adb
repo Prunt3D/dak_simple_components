@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Winter, 2015       --
 --                                                                    --
---                                Last revision :  08:30 04 Aug 2022  --
+--                                Last revision :  18:45 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -37,6 +37,8 @@ with System.Storage_Elements;
 
 package body GNUTLS is
    use System;
+
+   GNUTLS_E_SHORT_MEMORY_BUFFER : constant int := -51;
 
    type ssize_t is new ptrdiff_t;
    function To_Unsigned is new Ada.Unchecked_Conversion (int, unsigned);
@@ -1763,6 +1765,19 @@ package body GNUTLS is
       Check (Internal (Session.Holder.Handle, Status'Access));
       return Certificate_Status (Status);
    end Certificate_Verify_Peers;
+
+   function Check_Version return String is
+      function Internal (Version : Address := Null_Address)
+         return chars_ptr;
+      pragma Import (C, Internal, "gnutls_check_version");
+      Result : chars_ptr := Internal;
+   begin
+      if Result = Null_Ptr then
+         Raise_Exception (End_Error'Identity, "No version matched");
+      else
+         return Value (Result);
+      end if;
+   end Check_Version;
 
    function Check_Version (Version : String) return String is
       function Internal (Version : char_array) return chars_ptr;
@@ -4296,6 +4311,55 @@ package body GNUTLS is
       Check (Internal (Session.Holder.Handle));
    end Set_Default_Priority;
 
+   function Set_Default_Priority_Append_Internal
+            (  Session  : Address;
+               Add_Prio : char_array;
+               Err_Pos  : access chars_ptr;
+               Flags    : unsigned := 0
+            )  return int;
+   pragma Import
+          (  C,
+             Set_Default_Priority_Append_Internal,
+             "gnutls_set_default_priority_append"
+          );
+   pragma Weak_External (Set_Default_Priority_Append_Internal);
+
+   procedure Set_Default_Priority_Append
+             (  Session    : in out Session_Type;
+                Priorities : String
+             )  is
+      Add_Prio : constant char_array := To_C (Priorities);
+      Err_Pos  : aliased chars_ptr;
+      Result   : int;
+   begin
+      if Set_Default_Priority_Append_Internal'Address =
+         Null_Address
+      then
+         Raise_Exception
+         (  Use_Error'Identity,
+            "GNUTLS library does not provide " &
+            "gnutls_set_default_priority_append"
+         );
+      end if;
+      Result :=
+         Set_Default_Priority_Append_Internal
+         (  Session.Holder.Handle,
+            Add_Prio,
+            Err_Pos'Access
+         );
+      if Result = 0 then
+         return;
+      end if;
+      Raise_Exception
+      (  TLS_Error'Identity,
+         (  StrError (Result)
+         &  '['
+         &  int'Image (Result)
+         &  "] at "
+         &  Value (Err_Pos)
+      )  );
+   end Set_Default_Priority_Append;
+
    function Sign_Algorithm_Get
             (  Session : Session_Type
             )  return Sign_Algorithm is
@@ -4789,6 +4853,73 @@ package body GNUTLS is
 
    package Audit_Log is
       new Global_Set_Audit_Log_Function (Log_Trace, Log_Trace);
+
+   function Server_Name_Get (Session : Session_Type) return String is
+      function Internal
+               (  Session          : Address;
+                  Data             : Address;
+                  Data_Length      : access size_t;
+                  Server_Name_Type : access unsigned;
+                  Indx             : unsigned := 0
+               )  return int;
+      pragma Import (C, Internal, "gnutls_server_name_get");
+      Server_Name_Type : aliased unsigned;
+      Length           : aliased size_t;
+      Result           : int;
+   begin
+      declare
+         Name : aliased char_array (1..80);
+      begin
+         Length := Name'Length;
+         Result :=
+            Internal
+            (  Session.Holder.Handle,
+               Name'Address,
+               Length'Access,
+               Server_Name_Type'Access
+            );
+         if Result = 0 then
+            return To_Ada (Name);
+         end if;
+      end;
+      if Result = GNUTLS_E_SHORT_MEMORY_BUFFER then
+         declare
+            Name : aliased char_array (1..Length);
+         begin
+            Check
+            (  Internal
+               (  Session.Holder.Handle,
+                  Name'Address,
+                  Length'Access,
+                  Server_Name_Type'Access
+            )  );
+            return To_Ada (Name);
+         end;
+      end if;
+      Check (Result);
+      return "";
+   end Server_Name_Get;
+
+   procedure Server_Name_Set
+             (  Session : in out Session_Type;
+                Name    : String
+             )  is
+      function Internal
+               (  Session          : Address;
+                  Server_Name_Type : int; -- 1 is the only valid value
+                  Name             : char_array;
+                  Length           : size_t
+               )  return int;
+      pragma Import (C, Internal, "gnutls_server_name_set");
+   begin
+      Check
+      (  Internal
+         (  Session.Holder.Handle,
+            1,
+            To_C (Name),
+            Name'Length
+      )  );
+   end Server_Name_Set;
 
    procedure Set_TLS_Debug (Level : int) is
       use Ada.Text_IO;

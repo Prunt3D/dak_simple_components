@@ -3,7 +3,7 @@
 --  Test                                           Luebeck            --
 --                                                 Summer, 2016       --
 --                                                                    --
---                                Last revision :  23:22 29 Sep 2017  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -38,9 +38,6 @@ with GNAT.Exception_Traces;
 with GNAT.Sockets.Server.Secure.X509;
 with GNAT.Sockets.SMTP.Client.Synchronous;
 
-with Strings_Edit.Lexicographical_Order;
-use  Strings_Edit.Lexicographical_Order;
-
 procedure Test_SMTP_Client is
    use GNAT.Sockets.SMTP.Client;
    use GNAT.Sockets.SMTP.Client.Synchronous;
@@ -73,7 +70,7 @@ begin
    declare
       Factory : aliased Connections_Factory;
       Server  : aliased Connections_Server (Factory'Access, 0);
-      Client  : Connection_Ptr :=
+      Client  : constant Connection_Ptr :=
                    new SMTP_Client
                        (  Listener     => Server'Unchecked_Access,
                           Reply_Length => 1024,

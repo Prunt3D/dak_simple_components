@@ -3,7 +3,7 @@
 --     Strings_Edit.UTF8.Categorization            Luebeck            --
 --  Implementation                                 Spring, 2008       --
 --                                                                    --
---                                Last revision :  09:15 26 Nov 2022  --
+--                                Last revision :  14:35 11 Mar 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --

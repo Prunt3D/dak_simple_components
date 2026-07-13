@@ -3,7 +3,7 @@
 --     Universally_Unique_Identifiers              Luebeck            --
 --  Interface                                      Winter, 2021       --
 --                                                                    --
---                                Last revision :  13:12 05 Jan 2021  --
+--                                Last revision :  17:53 15 Jan 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -52,17 +52,30 @@ package Universally_Unique_Identifiers is
 --
 -- Create -- An UUID using the time stamp and node ID
 --
---    ID    - The node identification, 6 characters
---    Stamp - The time stamp
+--    ID      - The node identification, 6 characters
+--    Stamp   - The time stamp
+--    Version - The version of v1 or v6
 --
 -- Returns :
 --
 --    UUID
 --
+   type UUID_Version is (UUID_v1, UUID_v6);
    function Create
-            (  ID    : Node_ID;
-               Stamp : Time := Clock
+            (  ID      : Node_ID;
+               Stamp   : Time := Clock;
+               Version : UUID_Version := UUID_v1
             )  return UUID_Value;
+--
+-- Create_v7 -- An UUID using the time stamp and pseudo-random number
+--
+--    Stamp - The time stamp
+--
+-- Returns :
+--
+--    UUIDv7
+--
+   function Create_v7 (Stamp : Time := Clock) return UUID_Value;
 --
 -- <, <=, >=, > -- Comparisons
 --

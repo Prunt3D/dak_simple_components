@@ -3,7 +3,7 @@
 --     Parsers.Generic_Token.                      Luebeck            --
 --        Generic_Token_Lexer                      Winter, 2004       --
 --  Implementation                                                    --
---                                Last revision :  13:13 14 Sep 2019  --
+--                                Last revision :  15:25 02 Jul 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -28,6 +28,7 @@
 with Ada.Exceptions;  use Ada.Exceptions;
 
 package body Parsers.Generic_Token.Generic_Token_Lexer is
+
    use Implementation;
    use Vocabulary;
 --
@@ -41,13 +42,13 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
 --    The corresponding lexic token
 --
    function Get_Token
-            (  Code  : Source_Type;
+            (  Code  : Token_Source_Type;
                Token : Table_Token
             )  return Lexical_Token;
    pragma Inline (Get_Token);
 
    function Get_Token
-            (  Code  : Source_Type;
+            (  Code  : Token_Source_Type;
                Token : Table_Token
             )  return Lexical_Token is
    begin
@@ -113,7 +114,7 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
 
    procedure Get_Infix
              (  Context : in out Lexer;
-                Code    : in out Source_Type;
+                Code    : in out Token_Source_Type;
                 Token   : out Lexical_Token;
                 Got_It  : out Boolean
              )  is
@@ -124,7 +125,7 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
    begin
       Sources.Get_Line (Code, Line, Pointer, Last);
       Get
-      (  Line (Line'First..Last),
+      (  Line (Pointer..Last),
          Pointer,
          Context.Infixes.all,
          Result,
@@ -132,13 +133,13 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
       );
       if Got_It then
          Sources.Set_Pointer (Code, Pointer);
-         Token  := Get_Token (Code, Result);
+         Token := Get_Token (Code, Result);
       end if;
    end Get_Infix;
 
    procedure Get_Postfix
              (  Context : in out Lexer;
-                Code    : in out Source_Type;
+                Code    : in out Token_Source_Type;
                 Token   : out Lexical_Token;
                 Got_It  : out Boolean
              )  is
@@ -149,7 +150,7 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
    begin
       Sources.Get_Line (Code, Line, Pointer, Last);
       Get
-      (  Line (Line'First..Last),
+      (  Line (Pointer..Last),
          Pointer,
          Context.Postfixes.all,
          Result,
@@ -157,13 +158,13 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
       );
       if Got_It then
          Sources.Set_Pointer (Code, Pointer);
-         Token  := Get_Token (Code, Result);
+         Token := Get_Token (Code, Result);
       end if;
    end Get_Postfix;
 
    procedure Get_Prefix
              (  Context : in out Lexer;
-                Code    : in out Source_Type;
+                Code    : in out Token_Source_Type;
                 Token   : out Lexical_Token;
                 Got_It  : out Boolean
              )  is
@@ -174,7 +175,7 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
    begin
       Sources.Get_Line (Code, Line, Pointer, Last);
       Get
-      (  Line (Line'First..Last),
+      (  Line (Pointer..Last),
          Pointer,
          Context.Prefixes.all,
          Result,
@@ -182,20 +183,20 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
       );
       if Got_It then
          Sources.Set_Pointer (Code, Pointer);
-         Token  := Get_Token (Code, Result);
+         Token := Get_Token (Code, Result);
       end if;
    end Get_Prefix;
 
    procedure On_Association_Error
              (  Context : in out Lexer;
-                Code    : in out Source_Type;
+                Code    : in out Token_Source_Type;
                 Left    : in out Operation_Token;
                 Right   : in out Operation_Token
              )  is
    begin
       Raise_Exception
       (  Syntax_Error'Identity,
-         (  "Operation at "
+         (  "Brackets required. Operation at "
          &  Sources.Image (Left.Location)
          &  " cannot be associated with one at "
          &  Sources.Image (Right.Location)
@@ -204,7 +205,7 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
 
    procedure On_Missing_Operand
              (  Context  : in out Lexer;
-                Code     : in out Source_Type;
+                Code     : in out Token_Source_Type;
                 Argument : out Argument_Token
              )  is
    begin
@@ -217,7 +218,7 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
 
    procedure On_Missing_Operand
              (  Context   : in out Lexer;
-                Code      : in out Source_Type;
+                Code      : in out Token_Source_Type;
                 Operation : Operation_Token;
                 Argument  : out Argument_Token
              )  is
@@ -230,7 +231,7 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
 
    procedure On_Missing_Operation
              (  Context   : in out Lexer;
-                Code      : in out Source_Type;
+                Code      : in out Token_Source_Type;
                 Modifier  : Operation_Token;
                 Operation : out Lexical_Token;
                 Got_It    : out Boolean
@@ -238,60 +239,71 @@ package body Parsers.Generic_Token.Generic_Token_Lexer is
    begin
       Raise_Exception
       (  Syntax_Error'Identity,
-         (  "Operation expected at "
-         &  Sources.Image (Sources.Link (Code))
-         &  " after a reserved word at "
+         (  "A reserved word at "
          &  Sources.Image (Modifier.Location)
+         &  " is not followed by an operation expected at "
+         &  Sources.Image (Sources.Link (Code))
       )  );
    end On_Missing_Operation;
 
    procedure On_Missing_Right_Bracket
              (  Context : in out Lexer;
-                Code    : in out Source_Type;
+                Code    : in out Token_Source_Type;
                 Left    : in out Operation_Token;
                 Right   : out Operation_Token
              )  is
    begin
       Raise_Exception
       (  Syntax_Error'Identity,
-         (  "The missing right bracket at "
-         &  Sources.Image (Sources.Link (Code))
-         &  " to match the left one at "
+         (  "Missing right bracket to match the left one at "
          &  Sources.Image (Left.Location)
+         &  " is expected at "
+         &  Sources.Image (Sources.Link (Code))
       )  );
    end On_Missing_Right_Bracket;
 
    procedure On_Wrong_Comma
              (  Context : in out Lexer;
-                Code    : in out Source_Type;
+                Code    : in out Token_Source_Type;
                 Left    : in out Operation_Token;
                 Comma   : in out Operation_Token
              )  is
    begin
       Raise_Exception
       (  Syntax_Error'Identity,
-         (  "The comma at "
-         &  Sources.Image (Comma.Location)
-         &  " does not match the left bracket at "
+         (  "the left bracket at "
          &  Sources.Image (Left.Location)
+         &  " is not matched by the comma at "
+         &  Sources.Image (Comma.Location)
       )  );
    end On_Wrong_Comma;
 
    procedure On_Wrong_Right_Bracket
              (  Context : in out Lexer;
-                Code    : in out Source_Type;
+                Code    : in out Token_Source_Type;
                 Left    : in out Operation_Token;
                 Right   : in out Operation_Token;
                 Got_It  : out Boolean
              )  is
+      use type Descriptors.Descriptor_Class;
    begin
-      Raise_Exception
-      (  Syntax_Error'Identity,
-         (  "The right bracket at "
-         &  Sources.Image (Right.Location)
-         &  " does not match the left one at "
-         &  Sources.Image (Left.Location)
-      )  );
+      if Top (Context).Class = Descriptors.Sublist then
+         Raise_Exception
+         (  Syntax_Error'Identity,
+            (  "The sublist at "
+            &  Sources.Image (Left.Location)
+            &  " is not matched by right bracket at "
+            &  Sources.Image (Right.Location)
+         )  );
+      else
+         Raise_Exception
+         (  Syntax_Error'Identity,
+            (  "The left one at "
+            &  Sources.Image (Left.Location)
+            &  " is not matched by the right bracket at "
+            &  Sources.Image (Right.Location)
+         )  );
+      end if;
    end On_Wrong_Right_Bracket;
 
 end Parsers.Generic_Token.Generic_Token_Lexer;

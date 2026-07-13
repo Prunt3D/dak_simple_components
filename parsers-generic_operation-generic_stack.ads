@@ -3,7 +3,7 @@
 --     Parsers.Generic_Operation.                  Luebeck            --
 --        Generic_Stack                            Winter, 2004       --
 --  Interface                                                         --
---                                Last revision :  15:35 29 Apr 2012  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -164,7 +164,7 @@ package Parsers.Generic_Operation.Generic_Stack is
 --
 -- Pop -- Remove the stack top item
 --
---    Container   - The operation stack
+--    Container - The operation stack
 --
 -- When  stub is on the top, then the stack is semantically empty and so
 -- stub it cannot be popped.
@@ -174,6 +174,19 @@ package Parsers.Generic_Operation.Generic_Stack is
 --    Constraint_Error - An empty stack
 --
    procedure Pop (Container : in out Stack'Class);
+--
+-- Push -- An item on the stack
+--
+--    Container - The operation stack
+--    Item      - The operation to push onto
+--
+-- This procedure is a low level operation that should normally never be
+-- used directly.
+--
+   procedure Push
+             (  Container : in out Stack'Class;
+                Item      : Descriptor
+             );
 --
 -- Push_Abort -- Abort evaluation of an expression
 --
@@ -454,6 +467,7 @@ private
    pragma Inline (Is_Expected);
    pragma Inline (Is_Empty);
    pragma Inline (Pop);
+   pragma Inline (Push);
    pragma Inline (Replace);
    pragma Inline (Top);
 

@@ -3,7 +3,7 @@
 --      Persistent.Memory_Pools                    Luebeck            --
 --  Implementation                                 Winter, 2014       --
 --                                                                    --
---                                Last revision :  18:00 18 Aug 2022  --
+--                                Last revision :  17:53 15 Jan 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -160,7 +160,6 @@ package body Persistent.Memory_Pools is
             (  Block  : Byte_Array;
                Offset : Block_Offset
             )  return Unsigned_64 is
-      pragma Inline (Get);
    begin
       return
       (              Unsigned_64 (Block (Offset    ))
@@ -201,7 +200,6 @@ package body Persistent.Memory_Pools is
                 Offset : Block_Offset;
                 Value  : Unsigned_64
              )  is
-      pragma Inline (Put);
    begin
       Block (Offset..Offset + 7) :=
          (  1 => Unsigned_8 (16#FF# and Value),

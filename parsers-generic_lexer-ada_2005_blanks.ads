@@ -3,7 +3,7 @@
 --     Parsers.Generic_Lexer.                      Luebeck            --
 --        Ada_2005_Blanks                          Winter, 2009       --
 --  Interface                                                         --
---                                Last revision :  22:28 15 Feb 2009  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -48,5 +48,9 @@ package Parsers.Generic_Lexer.Ada_2005_Blanks is
              (  Context : in out Lexer;
                 Code    : in out Source_Type;
                 Got_It  : out Boolean
+             );
+   procedure Get_Blank
+             (  Context : in out Lexer;
+                Code    : in out Source_Type
              );
 end Parsers.Generic_Lexer.Ada_2005_Blanks;

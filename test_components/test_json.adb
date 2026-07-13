@@ -3,7 +3,7 @@
 --     Test_Parser_JSON                            Luebeck            --
 --  Test program                                   Autumn, 2019       --
 --                                                                    --
---                                Last revision :  10:13 29 Nov 2020  --
+--                                Last revision :  15:25 02 Jul 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of  the  GNU  Library  General  Public  --
@@ -28,11 +28,9 @@
 --  02139, USA.                                                       --
 --____________________________________________________________________--
 
-with Ada.Calendar;                        use Ada.Calendar;
-with Ada.Characters.Latin_1;              use Ada.Characters.Latin_1;
-with Ada.Exceptions;                      use Ada.Exceptions;
-with Ada.Text_IO;                         use Ada.Text_IO;
-with Strings_Edit.Streams;                use Strings_Edit.Streams;
+with Ada.Exceptions;        use Ada.Exceptions;
+with Ada.Text_IO;           use Ada.Text_IO;
+with Strings_Edit.Streams;  use Strings_Edit.Streams;
 
 with Parsers.JSON.Multiline_Source;
 with Parsers.JSON.String_Source;
@@ -40,9 +38,6 @@ with Parsers.Multiline_Source.Stream_IO;
 with Parsers.Multiline_Source.Text_IO;
 with Parsers.String_Source;
 with Stack_Storage;
-with Strings_Edit.Floats;
-with Strings_Edit.Streams;
--- with GNAT.Exception_Traces;
 
 procedure Test_JSON is
    use Parsers.JSON;
@@ -122,6 +117,12 @@ begin
       Input : aliased Source (Text'Access);
       Data  : constant JSON_Value := Parse (Input'Access, Arena'Access);
    begin
+      if Data / "stock" / "warehouse" /= 300.0 then
+         Raise_Exception
+         (  Data_Error'Identity,
+            "Data / ""stock"" / ""warehouse"" /= 300.0"
+         );
+      end if;
       Put_Line ("Parsed:" & Image (Data));
    end;
    Stack_Storage.Deallocate_All (Arena);
@@ -138,7 +139,6 @@ begin
    declare
       use Parsers.JSON.Multiline_Source;
       use Parsers.Multiline_Source.Stream_IO;
-      use Strings_Edit.Streams;
       Text  : constant String :=
               "{"                                          & CRLF &
               "  ""first name"": ""John"","                & CRLF &
@@ -214,6 +214,12 @@ begin
          Data  : constant JSON_Value :=
                           Parse (Input'Access, Arena'Access);
       begin
+         if Data / 1 / "precision" /= "zip" then
+            Raise_Exception
+            (  Data_Error'Identity,
+               "Data / 1 / ""precision"" /= ""zip"""
+            );
+         end if;
          Put_Line ("Parsed:" & Image (Data, True));
       end;
       Close (File);

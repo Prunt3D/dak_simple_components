@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Winter, 2018       --
 --                                                                    --
---                                Last revision :  11:44 11 Sep 2023  --
+--                                Last revision :  18:29 08 Nov 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -300,6 +300,10 @@ package body Py.Load_Python_Library is
             )  return Capsule_SetPointer_Ptr;
    function GetProcAddress
             (  Module : Address;
+               Name   : char_array := "PyCFunction_NewEx" & Nul
+            )  return CFunction_NewEx_Ptr;
+   function GetProcAddress
+            (  Module : Address;
                Name   : char_array := "Py_CompileString" & Nul
             )  return CompileString_Ptr;
    function GetProcAddress
@@ -468,6 +472,10 @@ package body Py.Load_Python_Library is
             )  return InitializeEx_Ptr;
    function GetProcAddress
             (  Module : Address;
+               Name   : char_array := "Py_IsInitialized" & Nul
+            )  return IsInitialized_Ptr;
+   function GetProcAddress
+            (  Module : Address;
                Name   : char_array := "PyImport_ExecCodeModuleEx" & Nul
             )  return Import_ExecCodeModuleEx_Ptr;
    function GetProcAddress
@@ -476,12 +484,20 @@ package body Py.Load_Python_Library is
             )  return Import_GetModule_Ptr;
    function GetProcAddress
             (  Module : Address;
+               Name   : char_array := "PyImport_GetModuleDict" & Nul
+            )  return Import_GetModuleDict_Ptr;
+   function GetProcAddress
+            (  Module : Address;
                Name   : char_array := "PyImport_Import" & Nul
             )  return Import_Import_Ptr;
    function GetProcAddress
             (  Module : Address;
                Name   : char_array := "PyImport_ImportModule" & Nul
             )  return Import_ImportModule_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array := "PyIndex_Check" & Nul
+            )  return Index_Check_Ptr;
    function GetProcAddress
             (  Module : Address;
                Name   : char_array := "PyIter_Check" & Nul
@@ -595,6 +611,154 @@ package body Py.Load_Python_Library is
             (  Module : Address;
                Name   : char_array := "Py_NewInterpreter" & Nul
             )  return NewInterpreter_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Absolute" & Nul
+            )  return Number_Absolute_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Add" & Nul
+            )  return Number_Add_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_And" & Nul
+            )  return Number_And_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_AsSsize_t" & Nul
+            )  return Number_AsSsize_t_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Check" & Nul
+            )  return Number_Check_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Divmod" & Nul
+            )  return Number_Divmod_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Float" & Nul
+            )  return Number_Float_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_FloorDivide" & Nul
+            )  return Number_FloorDivide_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Index" & Nul
+            )  return Number_Index_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceAdd" & Nul
+            )  return Number_InPlaceAdd_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceAnd" & Nul
+            )  return Number_InPlaceAnd_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceFloorDivide" & Nul
+            )  return Number_InPlaceFloorDivide_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceLshift" & Nul
+            )  return Number_InPlaceLshift_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceMatrixMultiply" & Nul
+            )  return Number_InPlaceMatrixMultiply_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceMultiply" & Nul
+            )  return Number_InPlaceMultiply_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceOr" & Nul
+            )  return Number_InPlaceOr_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlacePower" & Nul
+            )  return Number_InPlacePower_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceRemainder" & Nul
+            )  return Number_InPlaceRemainder_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceRshift" & Nul
+            )  return Number_InPlaceRshift_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceSubtract" & Nul
+            )  return Number_InPlaceSubtract_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceTrueDivide" & Nul
+            )  return Number_InPlaceTrueDivide_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_InPlaceXor" & Nul
+            )  return Number_InPlaceXor_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Invert" & Nul
+            )  return Number_Invert_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Long" & Nul
+            )  return Number_Long_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Lshift" & Nul
+            )  return Number_Lshift_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_MatrixMultiply" & Nul
+            )  return Number_MatrixMultiply_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Multiply" & Nul
+            )  return Number_Multiply_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Negative" & Nul
+            )  return Number_Negative_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Or" & Nul
+            )  return Number_Or_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Positive" & Nul
+            )  return Number_Positive_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Power" & Nul
+            )  return Number_Power_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Remainder" & Nul
+            )  return Number_Remainder_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Rshift" & Nul
+            )  return Number_Rshift_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Subtract" & Nul
+            )  return Number_Subtract_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_ToBase" & Nul
+            )  return Number_ToBase_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_TrueDivide" & Nul
+            )  return Number_TrueDivide_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array :="PyNumber_Xor" & Nul
+            )  return Number_Xor_Ptr;
    function GetProcAddress
             (  Module : Address;
                Name   : char_array := "PyObject_Bytes" & Nul
@@ -856,7 +1020,18 @@ package body Py.Load_Python_Library is
             (  Module : Address;
                Name   : char_array := "PyUnicode_ReadChar" & Nul
             )  return Unicode_ReadChar_Ptr;
-
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array := "PyWeakref_GetObject" & Nul
+            )  return Weakref_GetObject_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array := "PyWeakref_NewProxy" & Nul
+            )  return Weakref_NewProxy_Ptr;
+   function GetProcAddress
+            (  Module : Address;
+               Name   : char_array := "PyWeakref_NewRef" & Nul
+            )  return Weakref_NewRef_Ptr;
    function GetProcAddress
             (  Module : Address;
                Name   : char_array
@@ -1202,6 +1377,7 @@ package body Py.Load_Python_Library is
          Links.Capsule_SetDestructor       := GetProcAddress (Library);
          Links.Capsule_SetName             := GetProcAddress (Library);
          Links.Capsule_SetPointer          := GetProcAddress (Library);
+         Links.CFunction_NewEx             := GetProcAddress (Library);
          Links.CompileString               := GetProcAddress (Library);
          Links.DecRef                      := GetProcAddress (Library);
 --       Links.Dict_Check                  := GetProcAddress (Library);
@@ -1257,6 +1433,12 @@ package body Py.Load_Python_Library is
          Links.Exc_NameError        := GetProcAddress
                                        (  Library,
                                           "PyExc_NameError" & Nul
+                                       );
+         Links.Exc_NotImplementedError
+                                    := GetProcAddress
+                                       (  Library,
+                                          "PyExc_NotImplementedError" &
+                                          Nul
                                        );
          Links.Exc_PermissionError  := GetProcAddress
                                        (  Library,
@@ -1328,10 +1510,13 @@ package body Py.Load_Python_Library is
          Links.Import_AppendInittab      := GetProcAddress (Library);
          Links.Import_ExecCodeModuleEx   := GetProcAddress (Library);
          Links.Import_GetModule          := GetProcAddress (Library);
+         Links.Import_GetModuleDict      := GetProcAddress (Library);
          Links.Import_Import             := GetProcAddress (Library);
          Links.Import_ImportModule       := GetProcAddress (Library);
          Links.IncRef                    := GetProcAddress (Library);
          Links.InitializeEx              := GetProcAddress (Library);
+         Links.IsInitialized             := GetProcAddress (Library);
+         Links.Index_Check               := GetProcAddress (Library);
          Links.Iter_Check                := GetProcAddress (Library);
          Links.Iter_Next                 := GetProcAddress (Library);
          Links.List_Append               := GetProcAddress (Library);
@@ -1364,6 +1549,47 @@ package body Py.Load_Python_Library is
                                             (  Library,
                                                "_Py_NoneStruct" & Nul
                                             );
+         Links.NotImplemented   := GetProcAddress
+                                   (  Library,
+                                      "_Py_NotImplementedStruct" & Nul
+                                   );
+         Links.Number_Absolute           := GetProcAddress (Library);
+         Links.Number_Add                := GetProcAddress (Library);
+         Links.Number_And                := GetProcAddress (Library);
+         Links.Number_AsSsize_t          := GetProcAddress (Library);
+         Links.Number_Check              := GetProcAddress (Library);
+         Links.Number_Divmod             := GetProcAddress (Library);
+         Links.Number_Float              := GetProcAddress (Library);
+         Links.Number_FloorDivide        := GetProcAddress (Library);
+         Links.Number_Index              := GetProcAddress (Library);
+         Links.Number_InPlaceAdd         := GetProcAddress (Library);
+         Links.Number_InPlaceAnd         := GetProcAddress (Library);
+         Links.Number_InPlaceFloorDivide := GetProcAddress (Library);
+         Links.Number_InPlaceLshift         := GetProcAddress (Library);
+         Links.Number_InPlaceMatrixMultiply := GetProcAddress (Library);
+         Links.Number_InPlaceMultiply       := GetProcAddress (Library);
+         Links.Number_InPlaceOr          := GetProcAddress (Library);
+         Links.Number_InPlacePower       := GetProcAddress (Library);
+         Links.Number_InPlaceRemainder   := GetProcAddress (Library);
+         Links.Number_InPlaceRshift      := GetProcAddress (Library);
+         Links.Number_InPlaceSubtract    := GetProcAddress (Library);
+         Links.Number_InPlaceTrueDivide  := GetProcAddress (Library);
+         Links.Number_InPlaceXor         := GetProcAddress (Library);
+         Links.Number_Invert             := GetProcAddress (Library);
+         Links.Number_Long               := GetProcAddress (Library);
+         Links.Number_Lshift             := GetProcAddress (Library);
+         Links.Number_MatrixMultiply     := GetProcAddress (Library);
+         Links.Number_Multiply           := GetProcAddress (Library);
+         Links.Number_Negative           := GetProcAddress (Library);
+         Links.Number_Or                 := GetProcAddress (Library);
+         Links.Number_Positive           := GetProcAddress (Library);
+         Links.Number_Power              := GetProcAddress (Library);
+         Links.Number_Remainder          := GetProcAddress (Library);
+         Links.Number_Rshift             := GetProcAddress (Library);
+         Links.Number_Subtract           := GetProcAddress (Library);
+         Links.Number_ToBase             := GetProcAddress (Library);
+         Links.Number_TrueDivide         := GetProcAddress (Library);
+         Links.Number_Xor                := GetProcAddress (Library);
          Links.Object_Bytes              := GetProcAddress (Library);
          Links.Object_Call               := GetProcAddress (Library);
          Links.Object_CallNoArgs         := GetProcAddress (Library);
@@ -1433,6 +1659,9 @@ package body Py.Load_Python_Library is
          Links.Unicode_FromStringAndSize := GetProcAddress (Library);
          Links.Unicode_GetLength         := GetProcAddress (Library);
          Links.Unicode_ReadChar          := GetProcAddress (Library);
+         Links.Weakref_GetObject         := GetProcAddress (Library);
+         Links.Weakref_NewProxy          := GetProcAddress (Library);
+         Links.Weakref_NewRef            := GetProcAddress (Library);
 
          Check_Links (Name);
       end;

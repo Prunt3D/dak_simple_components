@@ -3,7 +3,7 @@
 --  Test                                           Luebeck            --
 --                                                 Winter, 2019       --
 --                                                                    --
---                                Last revision :  09:15 26 Nov 2022  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -25,12 +25,11 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 
-with Ada.Exceptions;     use Ada.Exceptions;
-with Ada.IO_Exceptions;  use Ada.IO_Exceptions;
-with Ada.Text_IO;        use Ada.Text_IO;
-with Interfaces;         use Interfaces;
-with Interfaces.C;       use Interfaces.C;
-with Julia;              use Julia;
+with Ada.Exceptions;  use Ada.Exceptions;
+with Ada.Text_IO;     use Ada.Text_IO;
+with Interfaces;      use Interfaces;
+with Interfaces.C;    use Interfaces.C;
+with Julia;           use Julia;
 
 with Julia.Generic_1D_Array;
 with Julia.Generic_2D_Array;

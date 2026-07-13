@@ -3,7 +3,7 @@
 --     Parsers.Generic_Source.                     Luebeck            --
 --        Get_UTF8_Text                            Winter, 2009       --
 --  Implementation                                                    --
---                                Last revision :  22:28 15 Feb 2009  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -46,14 +46,14 @@ begin
    if Last - Pointer >= Text'Length - 1 then
       while Index <= Text'Last loop
          begin
-            Get (Line.all, Pointer, Code_1);
+            Get (Line (Pointer..Last), Pointer, Code_1);
          exception
             when Data_Error =>
                Set_Pointer (Code, Pointer);
                Set_Pointer (Code, Pointer);
                Raise_Exception
                (  Syntax_Error'Identity,
-                  "Invalid UTF-8 encoding at " & Image (Link (Code))
+                  Encoding_Error & Image (Link (Code))
                );
          end;
          Get (Text, Index, Code_2);

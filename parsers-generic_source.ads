@@ -3,7 +3,7 @@
 --     Parsers.Generic_Source                      Luebeck            --
 --  Interface                                      Winter, 2004       --
 --                                                                    --
---                                Last revision :  19:57 14 Sep 2019  --
+--                                Last revision :  11:24 12 Jul 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -77,7 +77,10 @@
 --       recognized lexical token. It includes the character pointed  by
 --       the  first cursor,  and does not one pointed by the second one.
 --       Empty slices are allowed, so Link should never fail even at the
---       end of a source; 
+--       end of a source;
+--  (o)  Direct_Link  constructed  from two pointers in  the same  line.
+--       Layout_Error  is  propagated  when interval  is invalid  or its
+--       bounds cannot be used in Set_Pointer.
 --  (o)  Next_Line  is  used  to  advance to the next source line. After
 --       successful  completion Get_Line can be used to access the newly
 --       read  source  line.  Both cursors are set to Get_Line'First. So
@@ -130,7 +133,7 @@
 --        Pointer : Integer;
 --        Last    : Integer;
 --     begin
---        Get_Line (Line, Pointer, Last);
+--        Get_Line (Code, Line, Pointer, Last);
 --        while Pointer <= Last and then Line (Pointer) = ' ' loop
 --           Pointer := Pointer + 1;
 --        end loop;
@@ -154,11 +157,16 @@ generic
       return Integer is <>;
    with function Image (Link : Location_Type) return String is <>;
    with function Link (Code : Source_Type) return Location_Type is <>;
+   with function Direct_Link
+                 (  Code     : Source_Type;
+                    From, To : Integer
+                 )  return Location_Type is <>;
    with procedure Next_Line (Code : in out Source_Type) is <>;
    with procedure Reset_Pointer (Code : in out Source_Type) is <>;
    with procedure Set_Pointer
                   (  Code    : in out Source_Type;
-                     Pointer : Integer
+                     Pointer : Integer;
+                     Advance : Boolean := True
                   )  is <>;
    with function "&" (Left, Right : Location_Type)
       return Location_Type is <>;

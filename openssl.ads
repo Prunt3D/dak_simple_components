@@ -3,7 +3,7 @@
 --  Interface                                      Luebeck            --
 --                                                 Winter, 2019       --
 --                                                                    --
---                                Last revision :  09:42 12 Dec 2020  --
+--                                Last revision :  12:17 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -825,8 +825,9 @@ package OpenSSL is
    DTLS1_2_VERSION : constant SSL_Version_No := 16#0FEFD#;
    TLS_ANY_VERSION : constant SSL_Version_No := 16#10000#;
 
-   SSL_SENT_SHUTDOWN     : constant := 1;
-   SSL_RECEIVED_SHUTDOWN : constant := 2;
+   SSL_SENT_SHUTDOWN         : constant := 1;
+   SSL_RECEIVED_SHUTDOWN     : constant := 2;
+   TLSEXT_NAMETYPE_host_name : constant := 0;
 
    function SSL_CTX_check_private_key (ctx : SSL_CTX) return int;
    function SSL_CTX_clear_mode
@@ -865,6 +866,22 @@ package OpenSSL is
    function SSL_CTX_set_default_verify_dir (ctx : SSL_CTX) return int;
    function SSL_CTX_set_default_verify_file (ctx : SSL_CTX) return int;
    function SSL_CTX_set_default_verify_paths (ctx : SSL_CTX) return int;
+
+   type SSL_Msg_CB_Ptr is access procedure
+        (  write_p      : int;
+           version      : int;
+           content_type : int;
+           buf          : System.Address;
+           len          : size_t;
+           object       : SSL;
+           arg          : System.Address
+        );
+   pragma Convention (C, SSL_Msg_CB_Ptr);
+
+   procedure SSL_CTX_set_msg_callback
+             (  ctx      : SSL_CTX;
+                callback : SSL_Msg_CB_Ptr
+             );
    function SSL_CTX_set_mode
             (  ctx  : SSL_CTX;
                mode : SSL_MODE_TYPE
@@ -977,6 +994,7 @@ package OpenSSL is
             (  s    : SSL;
                mode : SSL_MODE_TYPE
             )  return SSL_MODE_TYPE;
+   procedure SSL_set_msg_callback (s : SSL; callback : SSL_Msg_CB_Ptr);
    function SSL_set_options (s : SSL; op : SSL_OP) return SSL_OP;
    procedure SSL_set_shutdown (s : SSL; mode : int);
    procedure SSL_set0_rbio (s : SSL; rbio : BIO);
@@ -1241,6 +1259,9 @@ private
                                       "SSL_CTX_set_default_verify_dir");
    pragma Import (C, SSL_CTX_set_default_verify_file,
                                      "SSL_CTX_set_default_verify_file");
+   pragma Import (C, SSL_CTX_set_msg_callback,
+                                            "SSL_CTX_set_msg_callback");
+
    pragma Import (C, SSL_CTX_set_options,   "SSL_CTX_set_options");
    pragma Import (C, SSL_CTX_set_timeout,   "SSL_CTX_set_timeout");
    pragma Import (C, SSL_CTX_use_certificate_ASN1,
@@ -1257,7 +1278,6 @@ private
                                       "SSL_CTX_use_RSAPrivateKey_ASN1");
    pragma Import (C, SSL_CTX_use_RSAPrivateKey_file,
                                       "SSL_CTX_use_RSAPrivateKey_file");
-
 
    pragma Import (C, SSL_accept,             "SSL_accept");
    pragma Import (C, SSL_certs_clear,        "SSL_certs_clear");
@@ -1293,6 +1313,7 @@ private
    pragma Import (C, SSL_set_cipher_list,    "SSL_set_cipher_list");
    pragma Import (C, SSL_set_ciphersuites,   "SSL_set_ciphersuites");
    pragma Import (C, SSL_set_connect_state,  "SSL_set_connect_state");
+   pragma Import (C, SSL_set_msg_callback,   "SSL_set_msg_callback");
    pragma Import (C, SSL_set_options,        "SSL_set_options");
    pragma Import (C, SSL_set_shutdown,       "SSL_set_shutdown");
    pragma Import (C, SSL_set0_rbio,          "SSL_set0_rbio");

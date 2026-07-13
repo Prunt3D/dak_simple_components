@@ -3,7 +3,7 @@
 --     Parsers.String_Source                       Luebeck            --
 --  Interface                                      Winter, 2004       --
 --                                                                    --
---                                Last revision :  22:28 15 Feb 2009  --
+--                                Last revision :  11:24 12 Jul 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -61,9 +61,15 @@ package Parsers.String_Source is
    function Get_Pointer (Code : Source) return Integer;
    function Image (Link : Location) return String;
    function Link (Code : Source) return Location;
+   function Direct_Link (Code : Source; From, To : Integer)
+      return Location;
    procedure Next_Line (Code : in out Source);
    procedure Reset_Pointer (Code : in out Source);
-   procedure Set_Pointer (Code : in out Source; Pointer : Integer);
+   procedure Set_Pointer
+             (  Code    : in out Source;
+                Pointer : Integer;
+                Advance : Boolean := True
+             );
 --
 -- Code -- The implementation
 --

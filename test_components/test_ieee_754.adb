@@ -3,7 +3,7 @@
 --  Test                                           Luebeck            --
 --                                                 Summer, 2008       --
 --                                                                    --
---                                Last revision :  13:32 28 Jan 2022  --
+--                                Last revision :  17:53 15 Jan 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -31,6 +31,8 @@ with Interfaces;             use Interfaces;
 with Strings_Edit;           use Strings_Edit;
 with Strings_Edit.Integers;  use Strings_Edit.Integers;
 
+with Ada.Calendar.Formatting;
+with Ada.Calendar.Time_Zones;
 with IEEE_754.Edit;
 with IEEE_754.Floats;
 with IEEE_754.Long_Floats;
@@ -1142,6 +1144,16 @@ begin
          Value ("4294836225"),
          "65535 * 65535"
       );
+      Check
+      (  From_Integer_64 ((2**32 + 1) / 2**32),
+         Value ("1"),
+         "(2**32 + 1) / 2**32"
+      );
+      Check
+      (  From_Integer_64 ((2**32 + 1) mod 2**32),
+         Value ("1"),
+         "(2**32 + 1) mod 2**32"
+      );
       Check (Value ("2")  * Value ("2"), Value (" 4"), " 2 * 2");
       Check (Value ("-1") * Value ("1"), Value ("-1"), "-1 * 1");
       Check (Value ("1")  * Value ("1"), Value ( "1"),  "1 * 1");
@@ -1327,6 +1339,7 @@ begin
       );
    end;
    declare
+      use Ada.Calendar.Time_Zones;
       use Universally_Unique_Identifiers;
       use Universally_Unique_Identifiers.Edit;
 
@@ -1381,6 +1394,55 @@ begin
             abs U & " /=" & abs V
          );
       end if;
+      U := Create_v7
+           (  Ada.Calendar.Formatting.Time_Of
+              (  Year      => 2022,
+                 Month     => 2,
+                 Day       => 22,
+                 Hour      => 14,
+                 Minute    => 22,
+                 Second    => 22,
+                 Time_Zone =>-5 * 60
+           )  );
+      Put_Line ("UUIDv7 " & Image (U));
+      U := Create
+           (  (  Character'Val (16#9F#),
+                 Character'Val (16#6B#),
+                 Character'Val (16#DE#),
+                 Character'Val (16#CE#),
+                 Character'Val (16#D8#),
+                 Character'Val (16#46#)
+              ),
+              Ada.Calendar.Formatting.Time_Of
+              (  Year       => 2022,
+                 Month      => 2,
+                 Day        => 22,
+                 Hour       => 19,
+                 Minute     => 22,
+                 Second     => 22
+              ),
+              UUID_v1
+           );
+      Put_Line ("UUIDv1 " & Image (U));
+      U := Create
+           (  (  Character'Val (16#9F#),
+                 Character'Val (16#6B#),
+                 Character'Val (16#DE#),
+                 Character'Val (16#CE#),
+                 Character'Val (16#D8#),
+                 Character'Val (16#46#)
+              ),
+              Ada.Calendar.Formatting.Time_Of
+              (  Year       => 2022,
+                 Month      => 2,
+                 Day        => 22,
+                 Hour       => 19,
+                 Minute     => 22,
+                 Second     => 22
+              ),
+              UUID_v6
+           );
+      Put_Line ("UUIDv6 " & Image (U));
    end;
 exception
    when Error : others =>

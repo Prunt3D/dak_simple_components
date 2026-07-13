@@ -3,7 +3,7 @@
 --     Strings_Edit.UTF8.Maps                      Luebeck            --
 --  Implementation                                 Spring, 2008       --
 --                                                                    --
---                                Last revision :  11:26 29 May 2020  --
+--                                Last revision :  11:03 04 Dec 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -107,6 +107,53 @@ package body Strings_Edit.UTF8.Maps is
          end if;
       end if;
    end Clone;
+
+   function Compare
+            (  Left, Right : UTF8_Code_Point_Array;
+               Map         : Unicode_Mapping
+            )  return Precedence is
+   begin
+      if Right'Length = 0 then
+         if Left'Length = 0 then
+            return Equal;
+         else
+            return Greater;
+         end if;
+      elsif Left'Length = 0 then
+         return Less;
+      end if;
+      declare
+         I : Integer := Left'First;
+         J : Integer := Right'First;
+      begin
+         loop
+            declare
+               L : constant UTF8_Code_Point := Value (Map, Left  (I));
+               R : constant UTF8_Code_Point := Value (Map, Right (J));
+            begin
+               if L < R then
+                  return Less;
+               elsif L > R then
+                  return Greater;
+               end if;
+            end;
+            if I = Left'Last then
+               if J = Right'Last then
+                  return Equal;
+               else
+                  return Less;
+               end if;
+            else
+               if J = Right'Last then
+                  return Greater;
+               else
+                  I := I + 1;
+                  J := J + 1;
+               end if;
+            end if;
+         end loop;
+      end;
+   end Compare;
 
    function Choose
             (  Set       : Unicode_Set;
@@ -515,6 +562,42 @@ package body Strings_Edit.UTF8.Maps is
          Pointer := To;
    end Get;
 
+   function Get
+            (  Source  : String;
+               Text    : String;
+               Pointer : access Integer;
+               Map     : Unicode_Mapping
+            )  return Boolean is
+   begin
+      if Text'Length = 0 then
+         return True;
+      end if;
+      declare
+         I : Integer := Text'First;
+         J : Integer := Pointer.all;
+         L : UTF8_Code_Point;
+         R : UTF8_Code_Point;
+      begin
+         loop
+            Get (Text, I, L);
+            if J > Source'Last then
+               return False;
+            end if;
+            Get (Source, J, R);
+            if Value (Map, L) /= Value (Map, R) then
+               return False;
+            end if;
+            if I > Text'Last then
+               Pointer.all := J;
+               return True;
+            end if;
+         end loop;
+      exception
+         when Layout_Error =>
+            return False;
+      end;
+   end Get;
+
    procedure Insert
              (  List      : in out Code_Points_List_Ptr;
                 Span      : Code_Points_Range;
@@ -748,7 +831,7 @@ package body Strings_Edit.UTF8.Maps is
             if J > Source'Last then
                return False;
             end if;
-            Get (Prefix, J, R);
+            Get (Source, J, R);
             if Value (Map, L) /= Value (Map, R) then
                return False;
             end if;
@@ -782,7 +865,7 @@ package body Strings_Edit.UTF8.Maps is
             if J > Source'Last then
                return False;
             end if;
-            Get (Prefix, J, R);
+            Get (Source, J, R);
             if Value (Map, L) /= Value (Map, R) then
                return False;
             end if;

@@ -32,7 +32,6 @@ with Interfaces.C;            use Interfaces.C;
 
 with Py.Class;
 with Py.Load_Python_Library;
-with System;
 
 procedure Test_Class is
 

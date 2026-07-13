@@ -3,7 +3,7 @@
 --     GNAT.Sockets.Connection_State_Machine.      Luebeck            --
 --     HTTP_Server                                 Winter, 2013       --
 --  Implementation                                                    --
---                                Last revision :  09:15 26 Nov 2022  --
+--                                Last revision :  17:53 15 Jan 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -2933,9 +2933,7 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
       Send_Date (Client);
       Send_Content_Type (Client, "text/html");
       Send_Connection (Client, False);
-      if Get then
-         Send_Body (Client, Message);
-      end if;
+      Send_Body (Client, Message, Get);
    end Reply_HTML;
 
    procedure Reply_Text
@@ -2950,9 +2948,7 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
       Send_Date (Client);
       Send_Content_Type (Client, "text/plain");
       Send_Connection (Client, False);
-      if Get then
-         Send_Body (Client, Message);
-      end if;
+      Send_Body (Client, Message, Get);
    end Reply_Text;
 
    procedure Send

@@ -3,7 +3,8 @@ project Strings_Edit is
    type Legacy_Type is ("Ada95", "Ada2005", "Ada2012");
    Legacy : Legacy_Type := external ("Legacy", "Ada2012");
 
-   type Development_Type is ("Debug", "Release", "Profile");
+   type Development_Type is
+           ("Debug", "Release", "Optimized", "Profile");
    Development : Development_Type := external ("Development", "Debug");
 
    type OS_Type is
@@ -55,6 +56,8 @@ project Strings_Edit is
           "strings_edit-object_identifiers.ads",
           "strings_edit-quoted.adb",
           "strings_edit-quoted.ads",
+          "strings_edit-rfc_3897.adb",
+          "strings_edit-rfc_3897.ads",
           "strings_edit-roman_edit.adb",
           "strings_edit-roman_edit.ads",
           "strings_edit-streams.adb",
@@ -76,6 +79,8 @@ project Strings_Edit is
           "strings_edit-utf8-handling.ads", 
           "strings_edit-utf8-categorization.adb", 
           "strings_edit-utf8-categorization.ads",
+          "strings_edit-utf8-normalization.adb", 
+          "strings_edit-utf8-normalization.ads",
           "strings_edit-utf8-blocks.ads",
           "strings_edit-utf8-integer_edit.adb",
           "strings_edit-utf8-integer_edit.ads",
@@ -305,19 +310,39 @@ project Strings_Edit is
                    "-O2",
                    "-gnatn"
                 )  & GNAT_XX;
+         when "Optimized" =>
+            for Default_Switches ("ada") use
+                (  "-gnatwcikmoprvz.c.p.t.w.x",
+                   "-gnatp",
+                   "-gnatVaep",
+                   "-gnatf",
+                   "-gnatU",
+                   "-O3",
+                   "-gnatn"
+                )  & GNAT_XX;
          when "Profile" =>
             for Default_Switches ("ada") use
                 (  "-g",
                    "-pg"
                 )  & GNAT_XX;
       end case;
+      case Target_OS is
+          when "OSX" =>
+             for Default_Switches ("C") use
+                Compiler'Default_Switches ("C") &
+                (  "-isysroot",
+                   "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+                );
+          when others =>
+             null;
+       end case; 
    end Compiler;
 
    package Binder is
       case Development is
          when "Debug" =>
-            for Default_Switches ("ada") use ("-Es");
-         when "Release" =>
+            for Default_Switches ("ada") use ("-E");
+         when "Release" | "Optimized" =>
             for Default_Switches ("ada") use ();
          when others =>
             null;
@@ -328,7 +353,7 @@ project Strings_Edit is
       case Development is
          when "Debug" =>
             for Default_Switches ("ada") use ("-g");
-         when "Release" =>
+         when "Release" | "Optimized" =>
             for Default_Switches ("ada") use ("-s");
          when others =>
             null;
@@ -341,13 +366,18 @@ project Strings_Edit is
             for Default_Switches ("ada") use ("-g");
          when "Release" =>
             for Default_Switches ("ada") use ("-O2", "-s");
+         when "Optimized" =>
+            for Default_Switches ("ada") use ("-O3", "-s");
          when "Profile" =>
             for Default_Switches ("ada") use ("-g", "-pg");
       end case;
       case Target_OS is
          when "OSX" =>
             for Default_Switches ("Ada")
-              use Linker'Default_Switches ("Ada") & ("-Wl,-no_pie");
+               use Linker'Default_Switches ("Ada") &
+                   (  "-isysroot", 
+                      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+                   );
          when others =>
             null;
       end case;

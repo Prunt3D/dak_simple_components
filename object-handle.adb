@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Winter, 2002       --
 --                                                                    --
---                                Last revision :  09:42 12 Dec 2020  --
+--                                Last revision :  10:32 12 Jul 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -28,6 +28,8 @@
 with System;  use System;
 
 package body Object.Handle is
+
+   type Object_Ref is access constant Object_Type'Class;
 
    procedure Adjust (Reference : in out Handle) is
    begin
@@ -151,8 +153,8 @@ package body Object.Handle is
       return Boolean is
    begin
       if Left.Ptr = null then
-         return Right = null;
-      elsif Right = null then
+         return Object_Ref (Right) = null;
+      elsif Object_Ref (Right) = null then
          return False;
       else
          return Left.Ptr.all'Address = Right.all'Address;
@@ -163,8 +165,8 @@ package body Object.Handle is
       return Boolean is
    begin
       if Right.Ptr = null then
-         return Left = null;
-      elsif Left = null then
+         return Object_Ref (Left) = null;
+      elsif Object_Ref (Left) = null then
          return False;
       else
          return Right.Ptr.all'Address = Left.all'Address;

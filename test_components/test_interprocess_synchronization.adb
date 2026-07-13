@@ -3,7 +3,7 @@
 --     Test_Interprocess_Synchronization           Luebeck            --
 --  Test                                           Spring, 2018       --
 --                                                                    --
---                                Last revision :  18:00 18 Aug 2022  --
+--                                Last revision :  14:26 25 Apr 2024  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -297,7 +297,6 @@ begin
                   This : constant String :=
                                   "packet" & Integer'Image (Index);
                begin
-put_line(image(item));
                   declare
                      That : constant String := Get (Data.Board, Item);
                   begin

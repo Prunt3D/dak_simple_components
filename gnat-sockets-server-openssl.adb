@@ -3,7 +3,7 @@
 --     GNAT.Sockets.Server.OpenSSL                 Luebeck            --
 --  Implementation                                 Winter, 2019       --
 --                                                                    --
---                                Last revision :  08:30 04 Aug 2022  --
+--                                Last revision :  12:17 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -40,6 +40,11 @@ package body GNAT.Sockets.Server.OpenSSL is
    package Conversions is
       new System.Address_To_Access_Conversions (OpenSSL_Session);
 
+   package Factory_Conversions is
+      new System.Address_To_Access_Conversions
+          (  Abstract_OpenSSL_Factory'Class
+          );
+
    function "+" (Ptr : chars_ptr) return String is
    begin
       if Ptr = Null_Ptr then
@@ -53,6 +58,12 @@ package body GNAT.Sockets.Server.OpenSSL is
    Init         : Boolean    := False;
    Read_Method  : BIO_METHOD := No_METHOD;
    Write_Method : BIO_METHOD := No_METHOD;
+   Trace_Method : BIO_METHOD := No_METHOD;
+   --
+   -- SSL tracing
+   --
+   SSL_Trace_File : Ada.Text_IO.File_Access;
+   pragma Atomic (SSL_Trace_File);
 
    function BIO_Control
             (  b   : BIO;
@@ -122,6 +133,7 @@ package body GNAT.Sockets.Server.OpenSSL is
       Session : Object_Pointer := To_Pointer (BIO_get_data (b));
       Pointer : Stream_Element_Offset := 1;
       Buffer  : Buffer_Type;
+      pragma Import (Ada, Buffer);
       for Buffer'Address use data;
    begin
       BIO_clear_flags (b, BIO_FLAGS_RWS + BIO_FLAGS_SHOULD_RETRY);
@@ -164,12 +176,13 @@ package body GNAT.Sockets.Server.OpenSSL is
       Client  : Connection'Class renames Session.Client.all;
       Last    : Stream_Element_Offset;
       Buffer  : Buffer_Type;
+      pragma Import (Ada, Buffer);
       for Buffer'Address use data;
    begin
       BIO_clear_flags (b, BIO_FLAGS_RWS + BIO_FLAGS_SHOULD_RETRY);
       Send_Socket (Get_Socket (Client), Buffer, Last);
       if Last > 0 then
-         if Is_Trace_Received_On
+         if Is_Trace_Sent_On
             (  Client.Socket_Listener.Factory.all,
                Trace_Encoded
             )  then
@@ -217,6 +230,64 @@ package body GNAT.Sockets.Server.OpenSSL is
          return -1;
       end if;
    end BIO_Write;
+
+   function BIO_Trace_Puts
+            (  b    : BIO;
+               data : Stream_Element_Pointers.Pointer
+            )  return int is
+      use Stream_Element_Pointers;
+      Length : constant size_t := size_t (Virtual_Length (data));
+      Count  : aliased size_t;
+   begin
+      if 0 < BIO_Trace_Write
+             (  b,
+                data.all'Address,
+                size_t (Length),
+                Count'Access
+             )  then
+         return int (Count);
+      else
+         return -1;
+      end if;
+   end BIO_Trace_Puts;
+
+   function BIO_Trace_Write
+            (  b       : BIO;
+               data    : System.Address;
+               dlen    : size_t;
+               written : access size_t
+            )  return int is
+      use Ada.Text_IO;
+      subtype Buffer_Type is String (1..Natural (dlen));
+      Buffer  : Buffer_Type;
+      pragma Import (Ada, Buffer);
+      for Buffer'Address use data;
+      File    : File_Access := SSL_Trace_File;
+   begin
+      if File /= null then
+         Put (File.all, Buffer);
+      end if;
+      written.all := dlen;
+      return 1;
+   exception
+      when Error : others =>
+         written.all := dlen;
+         return 0;
+   end BIO_Trace_Write;
+
+   function BIO_Trace_Write
+            (  b    : BIO;
+               data : System.Address;
+               dlen : int
+            )  return int is
+      Count : aliased size_t;
+   begin
+      if BIO_Trace_Write (b, data, size_t (dlen), Count'Access) > 0 then
+         return int (Count);
+      else
+         return -1;
+      end if;
+   end BIO_Trace_Write;
 
    procedure Check_Private_Key (Session : SSL) is
    begin
@@ -295,6 +366,23 @@ package body GNAT.Sockets.Server.OpenSSL is
                BIO_meth_set_write_ex (Write_Method, BIO_Write'Access);
             Result :=
                BIO_meth_set_ctrl (Write_Method, BIO_Control'Access);
+
+            Trace_Method :=
+               BIO_meth_new (BIO_get_new_index, "SSL trace");
+            Result :=
+               BIO_meth_set_puts (Trace_Method, BIO_Trace_Puts'Access);
+            Result :=
+               BIO_meth_set_write_ex
+               (  Trace_Method,
+                  BIO_Trace_Write'Access
+               );
+            Result :=
+               BIO_meth_set_write
+               (  Trace_Method,
+                  BIO_Trace_Write'Access
+               );
+            Result :=
+               BIO_meth_set_ctrl (Trace_Method, BIO_Control'Access);
             Init := True;
          end if;
       end;
@@ -316,11 +404,24 @@ package body GNAT.Sockets.Server.OpenSSL is
       end if;
    end Create_Context;
 
+   procedure SSL_Trace
+             (  write_p      : int;
+                version      : int;
+                content_type : int;
+                buf          : System.Address;
+                len          : size_t;
+                object       : SSL;
+                arg          : System.Address
+             );
+   pragma Import (C, SSL_Trace, "SSL_trace");
+   pragma Weak_External (SSL_Trace);
+
    function Create_Transport
             (  Factory  : access Abstract_OpenSSL_Factory;
                Listener : access Connections_Server'Class;
                Client   : access Connection'Class
             )  return Encoder_Ptr is
+      use System;
       Result : Encoder_Ptr;
    begin
       if Client.Client then
@@ -347,14 +448,14 @@ package body GNAT.Sockets.Server.OpenSSL is
             if Session.SSL_Session = No_SSL then
                Check_Error (Data_Error'Identity);
             end if;
-            Factory.Client_Context :=  No_SSL_CTX;
+--            Factory.Client_Context := No_SSL_CTX;
          else
             Session.SSL_Session := SSL_new (Factory.Server_Context);
             SSL_set_accept_state (Session.SSL_Session);
             if Session.SSL_Session = No_SSL then
                Check_Error (Data_Error'Identity);
             end if;
-            Factory.Server_Context :=  No_SSL_CTX;
+--            Factory.Server_Context := No_SSL_CTX;
          end if;
          Session.Input := BIO_new (Read_Method);
          BIO_set_data (Session.Input,  Session'Address);
@@ -370,6 +471,31 @@ package body GNAT.Sockets.Server.OpenSSL is
          Prepare (Self, Client.all, Session.SSL_Session);
          if Factory.Trace_Session then
             Trace (Self, "OpenSSL handshake engaged");
+         end if;
+
+         if SSL_Trace'Address /= Null_Address then
+            Session.SSL_Trace := BIO_new (Trace_Method);
+            BIO_set_data (Session.SSL_Trace, Session'Address);
+            if (  SSL_ctrl
+                  (  Session.SSL_Session,
+                     SSL_CTRL_SET_MSG_CALLBACK_ARG,
+                     0,
+                     Address_Of (Session.SSL_Trace)
+                  )
+               <= 0
+               )  then
+               Check_Error (Use_Error'Identity);
+            end if;
+            SSL_set_msg_callback
+            (  Session.SSL_Session,
+               SSL_Trace'Access
+            );
+         end if;
+         if Client.Client then
+            Set_TLSext_Host_Name
+            (  Session.SSL_Session,
+               Get_Session_Host (Client.all)
+            );
          end if;
       end;
       return Result;
@@ -485,6 +611,27 @@ package body GNAT.Sockets.Server.OpenSSL is
          raise Connection_Error;
    end Decrypt;
 
+   procedure Disable_SSL_Trace is
+   begin
+      SSL_Trace_File := null;
+   end Disable_SSL_Trace;
+
+   procedure Enable_SSL_Trace
+             (  File : Ada.Text_IO.File_Access :=
+                       Ada.Text_IO.Standard_Output
+             )  is
+      use System;
+   begin
+      if SSL_Trace'Address = Null_Address then
+         Raise_Exception
+         (  Use_Error'Identity,
+            "This version of OpenSSL was not built with the " &
+            "'enable-ssl-trace' option."
+         );
+      end if;
+      SSL_Trace_File := File;
+   end Enable_SSL_Trace;
+
    procedure Encode
              (  Transport : in out OpenSSL_Session;
                 Client    : in out Connection'Class;
@@ -536,10 +683,16 @@ package body GNAT.Sockets.Server.OpenSSL is
    end Finalize;
 
    procedure Finalize (Session : in out OpenSSL_Session) is
+      use Ada.Text_IO;
+      Result : int;
    begin
       if Session.SSL_Session /= No_SSL then
          SSL_free (Session.SSL_Session);
          Session.SSL_Session := No_SSL;
+      end if;
+      if Session.SSL_Trace /= No_BIO then
+         Result := BIO_free (Session.SSL_Trace);
+         Session.SSL_Trace := No_BIO;
       end if;
       Finalize (Encoder (Session));
    end Finalize;
@@ -869,6 +1022,12 @@ package body GNAT.Sockets.Server.OpenSSL is
       null;
    end Handshake_Completed;
 
+   procedure Initialize (Factory : in out Abstract_OpenSSL_Factory) is
+   begin
+      Initialize (Connections_Factory (Factory));
+      Set_Keep_Host_Name (Factory, True);
+   end Initialize;
+
    function Is_TLS_Capable
             (  Factory : Abstract_OpenSSL_Factory
             )  return Boolean is
@@ -1047,6 +1206,7 @@ package body GNAT.Sockets.Server.OpenSSL is
                   end if;
                   Connected (Listener, Client);
                   Client.Session := Session_Active;
+                  Activated (Client);
                exception
                   when others =>
                      if Client.Session = Session_Connected then
@@ -1327,6 +1487,21 @@ package body GNAT.Sockets.Server.OpenSSL is
          end if;
       end if;
    end Set_Proto_Version;
+
+   procedure Set_TLSext_Host_Name (Session : SSL; Name : String) is
+      Host_Name : char_array := To_C (Name);
+   begin
+      if (  SSL_ctrl
+            (  Session,
+               SSL_CTRL_SET_TLSEXT_HOSTNAME,
+               TLSEXT_NAMETYPE_host_name,
+               Host_Name'Address
+               )
+            <= 0
+            )  then
+            Check_Error (Use_Error'Identity);
+         end if;
+   end Set_TLSext_Host_Name;
 
    procedure Set_TLS_Tracing
              (  Factory : in out Abstract_OpenSSL_Factory;
@@ -1821,7 +1996,7 @@ package body GNAT.Sockets.Server.OpenSSL is
       );
       if (  Last >= Pointer
          and then
-            Is_Trace_Received_On
+            Is_Trace_Sent_On
             (  Client.Socket_Listener.Factory.all,
                Trace_Encoded
          )   )

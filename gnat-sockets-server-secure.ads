@@ -3,7 +3,7 @@
 --     GNAT.Sockets.Server.Secure                  Luebeck            --
 --  Interface                                      Winter, 2015       --
 --                                                                    --
---                                Last revision :  10:32 11 May 2019  --
+--                                Last revision :  12:17 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -119,7 +119,7 @@ package GNAT.Sockets.Server.Secure is
              (  Factory : in out Abstract_GNUTLS_Factory;
                 Client  : in out Connection'Class;
                 Session : in out Session_Type
-             )  is abstract;
+             );
 --
 -- Set_TLS_Tracing -- Enable or disable TLS tracing
 --
@@ -143,6 +143,7 @@ private
       Trace_Session : Boolean := False;
       Trace_Decoded : Boolean := False;
    end record;
+   procedure Initialize (Factory : in out Abstract_GNUTLS_Factory);
 
    type TLS_Session_State is (TLS_Handshake, TLS_Exchange);
 

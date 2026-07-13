@@ -14,9 +14,13 @@ project Components.Connections_Server.Test_WebSockets_MQTT is
           "test_mqtt_servers.adb",
           "test_mqtt_servers.ads"
        );
-   for Main use
-       (  "test_mqtt_webserver.adb"
-       );
+   for Main use ("test_mqtt_webserver.adb");
+
    for Object_Dir use Components.Object_Dir_Path;
+
+   package Compiler renames Components.Compiler;
+   package Binder   renames Components.Binder;
+   package Builder  renames Components.Builder;
+   package Linker   renames Components.Linker;
 
 end Components.Connections_Server.Test_WebSockets_MQTT;

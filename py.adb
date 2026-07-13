@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Winter, 2018       --
 --                                                                    --
---                                Last revision :  13:35 10 Sep 2023  --
+--                                Last revision :  11:08 04 Dec 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -25,12 +25,12 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 
-with Ada.IO_Exceptions;    use Ada.IO_Exceptions;
-with Strings_Edit;         use Strings_Edit;
-with Strings_Edit.Quoted;  use Strings_Edit.Quoted;
-with Strings_Edit.UTF8;    use Strings_Edit.UTF8;
+with Ada.IO_Exceptions;        use Ada.IO_Exceptions;
+with Strings_Edit;             use Strings_Edit;
+with Strings_Edit.Quoted;      use Strings_Edit.Quoted;
+with Strings_Edit.UTF8;        use Strings_Edit.UTF8;
+with System.Storage_Elements;  use System.Storage_Elements;
 
-with System.Address_To_Access_Conversions;
 with Ada.Characters.Latin_1;
 with Ada.Calendar.Formatting;
 with Ada.Calendar.Time_Zones;
@@ -38,8 +38,11 @@ with Ada.Directories;
 with Ada.Tags;
 with Ada.Unchecked_Conversion;
 with Ada.Unchecked_Deallocation;
+with Generic_Unbounded_Array;
 with Strings_Edit.ISO_8601;
 with Strings_Edit.UTF8.Categorization;
+with System.Address_To_Access_Conversions;
+
 with Py.Load_Python_Library;
 
 package body Py is
@@ -50,7 +53,20 @@ package body Py is
    TypeError   : Object := Null_Object;
    SystemError : Object := Null_Object;
 
-   Too_Large_Integer : constant String := "Integer value is too large";
+   type Finalization_Hook_Ptr_Array is
+      array (Positive range <>) of Finalization_Hook_Ptr;
+   package Hook_Arrays is
+      new Generic_Unbounded_Array
+          (  Index_Type        => Positive,
+             Object_Type       => Finalization_Hook_Ptr,
+             Object_Array_Type => Finalization_Hook_Ptr_Array,
+             Null_Element      => null
+          );
+
+   Pre_Hooks_Count  : Natural := 0;
+   Post_Hooks_Count : Natural := 0;
+   Pre_Hook_List    : Hook_Arrays.Unbounded_Array;
+   Post_Hook_List   : Hook_Arrays.Unbounded_Array;
 
    procedure Load (Name : String := "") is
    begin
@@ -64,69 +80,6 @@ package body Py is
             Error_Type  : Object := Null_Object;
             Error_Value : Object := Null_Object;
             Traceback   : Object := Null_Object;
-            function Message return String is
-               Encoded : Handle;
-               Ptr     : aliased Char_Ptrs.Pointer;
-               Size    : aliased ssize_t;
-            begin
-               if Error_Value = Null_Object then
-                  return "[No error message]";
-               end if;
-               Encoded.Ptr :=
-                  Links.Unicode_AsEncodedString (Error_Value);
-               if Encoded.Ptr = Null_Object then
-                  Encoded.Ptr := Links.Object_Str (Error_Type);
-                  if Encoded.Ptr = Null_Object then
-                     Err_Clear;
-                     return "[Malcoded error message]";
-                  else
-                     Size := Links.Unicode_GetLength (Encoded.Ptr);
-                     if Size < 0 then
-                        Err_Clear;
-                        return "[Malformed type]";
-                     elsif Size = 0 then
-                        return "";
-                     else
-                        Err_Clear;
-                        declare
-                           Result  : String (1..Integer (Size * 4));
-                           Pointer : Integer := 1;
-                        begin
-                           for Index in 0..Size - 1 loop
-                              Put
-                              (  Result,
-                                 Pointer,
-                                 Code_Point
-                                 (  Wide_Wide_Character'Pos
-                                    (  Links.Unicode_ReadChar
-                                       (  Encoded.Ptr,
-                                          Index
-                              )  )  )  );
-                              if Is_Err_Occurred then
-                                 Err_Clear;
-                                 return "[Malcoded type]";
-                              end if;
-                           end loop;
-                           return Result (1..Pointer - 1);
-                        end;
-                     end if;
-                  end if;
-               else
-                  if ( -1
-                     =  Links.Bytes_AsStringAndSize
-                        (  Encoded.Ptr,
-                           Ptr'Access,
-                           Size'Access
-                     )  )  then
-                     return "[Malformed message]";
-                  else
-                     return To_Ada
-                            (  Char_Ptrs.Value (Ptr, ptrdiff_t (Size)),
-                               False
-                            );
-                  end if;
-               end if;
-            end Message;
          begin
             Links.Err_Fetch (Error_Type, Error_Value, Traceback);
             Links.Err_NormalizeException
@@ -135,7 +88,10 @@ package body Py is
                Traceback
             );
             declare
-               Text : constant String := Message;
+               Text : constant String :=
+                               Object_Str(Error_Value) &
+                               " "                     &
+                               Object_Str(Traceback);
             begin
                Links.Err_Restore (Error_Type, Error_Value, Traceback);
                Raise_Exception (Python_Error'Identity, Text);
@@ -202,6 +158,8 @@ package body Py is
          Error ("PyCapsule_SetPointer");
       elsif Links.Callable_Check = null then
          Error ("PyCallable_Check");
+      elsif Links.CFunction_NewEx = null then
+         Error ("PyCFunction_NewEx");
       elsif Links.CompileString = null then
          Error ("Py_CompileString");
       elsif Links.DecRef = null then
@@ -272,6 +230,8 @@ package body Py is
          Error ("PyExc_LookupError");
       elsif Links.Exc_NameError = null then
          Error ("PyExc_NameError");
+      elsif Links.Exc_NotImplementedError = null then
+         Error ("PyExc_NotImplementedError");
       elsif Links.Exc_PermissionError = null then
          Error ("PyExc_RuntimeError");
       elsif Links.Exc_RuntimeError = null then
@@ -308,12 +268,16 @@ package body Py is
          Error ("PyImport_ExecCodeModuleEx");
       elsif Links.Import_GetModule = null then
          Error ("PyImport_GetModule");
+      elsif Links.Import_GetModuleDict = null then
+         Error ("PyImport_GetModuleDict");
       elsif Links.Import_ImportModule = null then
          Error ("PyImport_ImportModule");
       elsif Links.IncRef = null then
          Error ("Py_IncRef");
       elsif Links.InitializeEx = null then
          Error ("Py_InitializeEx");
+      elsif Links.IsInitialized = null then
+         Error ("Py_IsInitialized");
       elsif Links.Iter_Check = null then
          Error ("PyIter_Check");
       elsif Links.Iter_Next = null then
@@ -324,6 +288,8 @@ package body Py is
          Error ("PyList_AsTuple");
 --    elsif Links.List_Check = null then
 --       Error ("PyList_Check");
+      elsif Links.Index_Check = null then
+         Error ("PyIndex_Check");
       elsif Links.List_Insert = null then
          Error ("PyList_Insert");
       elsif Links.List_GetItem = null then
@@ -375,6 +341,80 @@ package body Py is
          Error ("Py_NewInterpreter");
       elsif Links.None = Null_Object then
          Error ("_PyNone_Struct");
+      elsif Links.NotImplemented = Null_Object then
+         Error ("_Py_NotImplementedStruct");
+      elsif Links.Number_Absolute = null then
+         Error ("PyNumber_Absolute");
+      elsif Links.Number_Add = null then
+         Error ("PyNumber_Add");
+      elsif Links.Number_And = null then
+         Error ("PyNumber_And");
+      elsif Links.Number_AsSsize_t = null then
+         Error ("PyNumber_AsSsize_t");
+      elsif Links.Number_Check = null then
+         Error ("PyNumber_Check");
+      elsif Links.Number_Divmod = null then
+         Error ("PyNumber_Divmod");
+      elsif Links.Number_Float = null then
+         Error ("PyNumber_Float");
+      elsif Links.Number_FloorDivide = null then
+         Error ("PyNumber_FloorDivide");
+      elsif Links.Number_Index = null then
+         Error ("PyNumber_Index");
+      elsif Links.Number_InPlaceAdd = null then
+         Error ("PyNumber_InPlaceAdd");
+      elsif Links.Number_InPlaceAnd = null then
+         Error ("PyNumber_InPlaceAnd");
+      elsif Links.Number_InPlaceFloorDivide = null then
+         Error ("PyNumber_InPlaceFloorDivide");
+      elsif Links.Number_InPlaceLshift = null then
+         Error ("PyNumber_InPlaceLshift");
+      elsif Links.Number_InPlaceMatrixMultiply = null then
+         Error ("PyNumber_InPlaceMatrixMultiply");
+      elsif Links.Number_InPlaceMultiply = null then
+         Error ("PyNumber_InPlaceMultiply");
+      elsif Links.Number_InPlaceOr = null then
+         Error ("PyNumber_InPlaceOr");
+      elsif Links.Number_InPlacePower = null then
+         Error ("PyNumber_InPlacePower");
+      elsif Links.Number_InPlaceRemainder = null then
+         Error ("PyNumber_InPlaceRemainder");
+      elsif Links.Number_InPlaceRshift = null then
+         Error ("PyNumber_InPlaceRshift");
+      elsif Links.Number_InPlaceSubtract = null then
+         Error ("PyNumber_InPlaceSubtract");
+      elsif Links.Number_InPlaceTrueDivide = null then
+         Error ("PyNumber_InPlaceTrueDivide");
+      elsif Links.Number_InPlaceXor = null then
+         Error ("PyNumber_InPlaceXor");
+      elsif Links.Number_Invert = null then
+         Error ("PyNumber_Invert");
+      elsif Links.Number_Long = null then
+         Error ("PyNumber_Long");
+      elsif Links.Number_Lshift = null then
+         Error ("PyNumber_Lshift");
+      elsif Links.Number_MatrixMultiply = null then
+         Error ("PyNumber_MatrixMultiply");
+      elsif Links.Number_Multiply = null then
+         Error ("PyNumber_Multiply");
+      elsif Links.Number_Negative = null then
+         Error ("PyNumber_Negative");
+      elsif Links.Number_Or = null then
+         Error ("PyNumber_Or");
+      elsif Links.Number_Positive = null then
+         Error ("PyNumber_Positive");
+      elsif Links.Number_Power = null then
+         Error ("PyNumber_Power");
+      elsif Links.Number_Remainder = null then
+         Error ("PyNumber_Remainder");
+      elsif Links.Number_Rshift = null then
+         Error ("PyNumber_Rshift");
+      elsif Links.Number_Subtract = null then
+         Error ("PyNumber_Subtract");
+      elsif Links.Number_ToBase = null then
+         Error ("PyNumber_ToBase");
+      elsif Links.Number_TrueDivide = null then
+         Error ("PyNumber_TrueDivide");
       elsif Links.Object_Bytes = null then
          Error ("PyObject_Bytes");
 --    elsif Links.Object_CallNoArgs = null then
@@ -509,40 +549,47 @@ package body Py is
          Error ("Unicode_ReadChar");
       elsif Links.Unicode_Type = Null_Object then
          Error ("PyUnicode_Type");
+      elsif Links.Weakref_GetObject = null then
+         Error ("PyWeakref_GetObject");
+      elsif Links.Weakref_NewProxy = null then
+         Error ("PyWeakref_NewProxy");
+      elsif Links.Weakref_NewRef = null then
+         Error ("PyWeakref_NewRef");
       end if;
-      Reserved.Add ("False",    True);
-      Reserved.Add ("None",     True);
-      Reserved.Add ("True",     True);
-      Reserved.Add ("and",      True);
-      Reserved.Add ("as",       True);
-      Reserved.Add ("assert",   True);
-      Reserved.Add ("break",    True);
-      Reserved.Add ("class",    True);
-      Reserved.Add ("continue", True);
-      Reserved.Add ("def",      True);
-      Reserved.Add ("del",      True);
-      Reserved.Add ("elif",     True);
-      Reserved.Add ("else",     True);
-      Reserved.Add ("except",   True);
-      Reserved.Add ("finally",  True);
-      Reserved.Add ("for",      True);
-      Reserved.Add ("from",     True);
-      Reserved.Add ("global",   True);
-      Reserved.Add ("if",       True);
-      Reserved.Add ("import",   True);
-      Reserved.Add ("in",       True);
-      Reserved.Add ("is",       True);
-      Reserved.Add ("lambda",   True);
-      Reserved.Add ("nonlocal", True);
-      Reserved.Add ("not",      True);
-      Reserved.Add ("or",       True);
-      Reserved.Add ("pass",     True);
-      Reserved.Add ("raise",    True);
-      Reserved.Add ("return",   True);
-      Reserved.Add ("try",      True);
-      Reserved.Add ("while",    True);
-      Reserved.Add ("with",     True);
-      Reserved.Add ("yield",    True);
+      Reserved.Add ("False",          True);
+      Reserved.Add ("None",           True);
+      Reserved.Add ("NotImplemented", True);
+      Reserved.Add ("True",           True);
+      Reserved.Add ("and",            True);
+      Reserved.Add ("as",             True);
+      Reserved.Add ("assert",         True);
+      Reserved.Add ("break",          True);
+      Reserved.Add ("class",          True);
+      Reserved.Add ("continue",       True);
+      Reserved.Add ("def",            True);
+      Reserved.Add ("del",            True);
+      Reserved.Add ("elif",           True);
+      Reserved.Add ("else",           True);
+      Reserved.Add ("except",         True);
+      Reserved.Add ("finally",        True);
+      Reserved.Add ("for",            True);
+      Reserved.Add ("from",           True);
+      Reserved.Add ("global",         True);
+      Reserved.Add ("if",             True);
+      Reserved.Add ("import",         True);
+      Reserved.Add ("in",             True);
+      Reserved.Add ("is",             True);
+      Reserved.Add ("lambda",         True);
+      Reserved.Add ("nonlocal",       True);
+      Reserved.Add ("not",            True);
+      Reserved.Add ("or",             True);
+      Reserved.Add ("pass",           True);
+      Reserved.Add ("raise",          True);
+      Reserved.Add ("return",         True);
+      Reserved.Add ("try",            True);
+      Reserved.Add ("while",          True);
+      Reserved.Add ("with",           True);
+      Reserved.Add ("yield",          True);
    end Check_Links;
 
    procedure Check_Handle (Object : Handle) is
@@ -584,6 +631,532 @@ package body Py is
       when others =>
          return True;
    end Check_Matched;
+
+   package body Generic_Capsule is
+      Name : constant char_array :=
+                      To_C (Ada.Tags.Expanded_Name (Capsule_Name'Tag));
+
+      procedure Destructor (Capsule : Object);
+      pragma Convention (C, Destructor);
+
+      package Conversion is
+         new System.Address_To_Access_Conversions (Object_Type);
+
+      type Local_Ptr is access procedure (Capsule : Object);
+      pragma Convention (C, Local_Ptr);
+
+      function From_Local_Ptr is
+         new Ada.Unchecked_Conversion
+             (  Local_Ptr,
+                Capsule_Destructor_Ptr
+             );
+
+      procedure Free is
+         new Ada.Unchecked_Deallocation
+             (  Object_Type,
+                Conversion.Object_Pointer
+             );
+
+      procedure Destructor (Capsule : Object) is
+         Ptr : Conversion.Object_Pointer;
+      begin
+         Ptr := Conversion.To_Pointer
+                (  Links.Capsule_GetPointer (Capsule, Name)
+                );
+         Free (Ptr);
+      end Destructor;
+
+      function Create (Value : Object_Type) return Handle is
+         Ptr    : constant Object_Type_Ptr := new Object_Type'(Value);
+         Result : Handle;
+      begin
+         Result.Ptr :=
+            Links.Capsule_New
+            (  Ptr.all'Address,
+               Name,
+               From_Local_Ptr (Destructor'Access)
+            );
+         return Result;
+      end Create;
+
+      --  function Create (Object : Handle) return Weak_Handle is
+      --     Result : Weak_Handle;
+      --  begin
+      --     Check_Handle (Object);
+      --     Result.Reference.Reference :=
+      --        Links.Weakref_NewRef (Object.Ptr, Null_Object);
+      --     Links.IncRef (Result.Reference.Reference);
+      --     return Result;
+      --  end Create;
+
+      function Get (Value : Handle) return Object_Type_Ptr is
+         Address : System.Address;
+      begin
+         Check_Handle (Value);
+         Address := Links.Capsule_GetPointer (Value.Ptr, Name);
+         if Address = System.Null_Address then
+            Check_Error;
+            return null;
+         else
+            return Conversion.To_Pointer (Address).all'Unchecked_Access;
+         end if;
+      end Get;
+
+      function Is_Valid (Value : Handle) return Boolean is
+      begin
+         if Value.Ptr = Null_Object then
+            return False;
+         end if;
+         return Links.Capsule_IsValid (Value.Ptr, Name) = 1;
+      end Is_Valid;
+
+   end Generic_Capsule;
+
+   package Method_Data_Capsule is new Generic_Capsule (Method_Data);
+
+   function To_Method_Data (Value : Object)
+      return Method_Data_Capsule.Object_Type_Ptr is
+      use Method_Data_Capsule;
+      This : Handle;
+   begin
+      This.Ptr := Value;
+      Links.IncRef (This.Ptr);
+      return Get (This);
+   end To_Method_Data;
+
+   function Keyed_Operation
+            (  Self     : Object;
+               Args     : Object;
+               Keywords : Object
+            )  return Object;
+   pragma Convention (C, Keyed_Operation);
+
+   function Keyed_Operation
+            (  Self     : Object;
+               Args     : Object;
+               Keywords : Object
+            )  return Object is
+      This : Method_Data renames To_Method_Data (Self).all;
+   begin
+      declare
+         Objects : constant Object_Array :=
+                      Parse (Args, Keywords, This.List);
+         List    : Actual_Argument_List (Objects'Range);
+         Result  : Handle;
+      begin
+         for Index in List'Range loop
+            if Objects (Index) = Null_Object then
+               List (Index) := No_Value;
+            else
+               List (Index).Ptr := Objects (Index);
+               Links.IncRef (List (Index).Ptr);
+            end if;
+         end loop;
+         This.Keyed_Operation (This.Module.all, List, Result);
+         if Result.Ptr /= Null_Object then
+            Links.IncRef (Result.Ptr);
+         end if;
+         return Result.Ptr;
+      end;
+   exception
+      when Python_Error =>
+         return Null_Object;
+      when Error : others =>
+         Throw_SystemError (Error);
+         return Null_Object;
+   end Keyed_Operation;
+
+   procedure Add_Function
+             (  Module    : in out Python_Module;
+                Name      : String;
+                Doc       : String;
+                Profile   : Argument_List;
+                Operation : Module_Keyed_Function_Ptr
+             )  is
+   begin
+      if Module.Definition = null then
+         Raise_Exception (Use_Error'Identity, Not_Created);
+      elsif Module.Module = Null_Object then
+         Module.Module := Module_Create (Module.Definition.all);
+         if Module.Module = Null_Object then
+            Raise_Exception (Use_Error'Identity, Cannot_Add_Module);
+         end if;
+         if 0 /= Links.Dict_SetItemString
+                 (  Links.Import_GetModuleDict.all,
+                    Value (Module.Definition.Name),
+                    Module.Module
+                 )  then
+            Raise_Exception (Use_Error'Identity, Cannot_Add_Module);
+         end if;
+      end if;
+      declare
+         This : constant Handle :=
+                Method_Data_Capsule.Create
+                (  Method_Data'
+                   (  Ada.Finalization.Controlled
+                   with
+                      Kind_Of     => Keyed,
+                      Module      => Module'Unchecked_Access,
+                      Length      => Profile.Length,
+                      Definition  =>
+                         (  Name  => Null_Ptr,
+                            Meth  => (True, Keyed_Operation'Access),
+                            Flags => METH_VARARGS + METH_KEYWORDS,
+                            Doc   => Null_Ptr
+                         ),
+                      Keyed_Operation => Operation,
+                      List => Profile,
+                      Self => Null_Object
+                )  );
+         Data : Method_Data renames Method_Data_Capsule.Get (This).all;
+         Func : Handle;
+      begin
+         Data.Definition.Name := New_String (Name);
+         Data.Definition.Doc  := New_String (Doc);
+         Func.Ptr :=
+            Links.CFunction_NewEx
+            (  Data.Definition,
+               This.Ptr,
+               Module.Module
+            );
+         if Func.Ptr = Null_Object then
+            Check_Error;
+         end if;
+         if ( -1
+            =  Links.Object_SetAttrString
+               (  Module.Module,
+                  To_C (Name),
+                  Func.Ptr
+            )  )  then
+            Check_Error;
+         end if;
+         Data.Self := Func.Ptr;
+      end;
+   end Add_Function;
+
+   function Positional_Operation (Self : Object; Args : Object)
+      return Object;
+   pragma Convention (C, Positional_Operation);
+
+   function Positional_Operation (Self : Object; Args : Object)
+      return Object is
+      This : Method_Data renames To_Method_Data (Self).all;
+   begin
+      declare
+         List   : Actual_Argument_List
+                  (  1
+                  .. Argument_Position (Links.Tuple_Size (Args))
+                  );
+         Result : Handle;
+      begin
+         for Index in List'Range loop
+            List (Index).Ptr :=
+               Links.Tuple_GetItem (Args, ssize_t (Index) - 1);
+            if List (Index).Ptr = Null_Object then
+               Check_Error;
+            else
+              Links.IncRef (List (Index).Ptr); -- Borrowed reference
+            end if;
+         end loop;
+         This.Positional_Operation (This.Module.all, List, Result);
+         if Result.Ptr /= Null_Object then
+            Links.IncRef (Result.Ptr);
+         end if;
+         return Result.Ptr;
+      end;
+   exception
+      when Python_Error =>
+         return Null_Object;
+      when Error : others =>
+         Throw_SystemError (Error);
+         return Null_Object;
+   end Positional_Operation;
+
+   procedure Add_Function
+             (  Module    : in out Python_Module;
+                Name      : String;
+                Doc       : String;
+                Operation : Module_Positional_Function_Ptr
+             )  is
+   begin
+      if Module.Definition = null then
+         Raise_Exception (Use_Error'Identity, Not_Created);
+      elsif Module.Module = Null_Object then
+         Module.Module := Module_Create (Module.Definition.all);
+         if Module.Module = Null_Object then
+            Raise_Exception (Use_Error'Identity, Cannot_Add_Module);
+         end if;
+         if 0 /= Links.Dict_SetItemString
+                 (  Links.Import_GetModuleDict.all,
+                    Value (Module.Definition.Name),
+                    Module.Module
+                 )  then
+            Raise_Exception (Use_Error'Identity, Cannot_Add_Module);
+         end if;
+      end if;
+      declare
+         This : constant Handle :=
+                Method_Data_Capsule.Create
+                (  Method_Data'
+                   (  Ada.Finalization.Controlled
+                   with
+                      Kind_Of     => Positional,
+                      Module      => Module'Unchecked_Access,
+                      Length      => 1,
+                      Self        => Null_Object,
+                      Definition  =>
+                         (  Name  => Null_Ptr,
+                            Meth  => (  False,
+                                        Positional_Operation'Access
+                                     ),
+                            Flags => METH_VARARGS,
+                            Doc   => Null_Ptr
+                         ),
+                      Positional_Operation => Operation
+                )  );
+         Data : Method_Data renames Method_Data_Capsule.Get (This).all;
+         Func : Handle;
+      begin
+         Data.Definition.Name := New_String (Name);
+         Data.Definition.Doc  := New_String (Doc);
+         Func.Ptr :=
+            Links.CFunction_NewEx
+            (  Data.Definition,
+               This.Ptr,
+               Module.Module
+            );
+         if Func.Ptr = Null_Object then
+            Check_Error;
+         end if;
+         if ( -1
+            =  Links.Object_SetAttrString
+               (  Module.Module,
+                  To_C (Name),
+                  Func.Ptr
+            )  )  then
+            Check_Error;
+         end if;
+         Data.Self := Func.Ptr;
+      end;
+   end Add_Function;
+
+   function One_Argument_Operation (Self : Object; Arg : Object)
+      return Object;
+   pragma Convention (C, One_Argument_Operation);
+
+   function One_Argument_Operation (Self : Object; Arg : Object)
+      return Object is
+      This : Method_Data renames To_Method_Data (Self).all;
+   begin
+      declare
+         Argument : Handle;
+         Result   : Handle;
+      begin
+         Argument.Ptr := Arg;
+         Links.IncRef (Argument.Ptr);
+         This.One_Argument_Operation
+         (  This.Module.all,
+            Argument,
+            Result
+         );
+         if Result.Ptr /= Null_Object then
+            Links.IncRef (Result.Ptr);
+         end if;
+         return Result.Ptr;
+      end;
+   exception
+      when Python_Error =>
+         return Null_Object;
+      when Error : others =>
+         Throw_SystemError (Error);
+         return Null_Object;
+   end One_Argument_Operation;
+
+   procedure Add_Function
+             (  Module    : in out Python_Module;
+                Name      : String;
+                Doc       : String;
+                Operation : Module_One_Argument_Function_Ptr
+             )  is
+   begin
+      if Module.Definition = null then
+         Raise_Exception (Use_Error'Identity, Not_Created);
+      elsif Module.Module = Null_Object then
+         Module.Module := Module_Create (Module.Definition.all);
+         if Module.Module = Null_Object then
+            Raise_Exception (Use_Error'Identity, Cannot_Add_Module);
+         end if;
+         if 0 /= Links.Dict_SetItemString
+                 (  Links.Import_GetModuleDict.all,
+                    Value (Module.Definition.Name),
+                    Module.Module
+                 )  then
+            Raise_Exception (Use_Error'Identity, Cannot_Add_Module);
+         end if;
+      end if;
+      declare
+         This : constant Handle :=
+                Method_Data_Capsule.Create
+                (  Method_Data'
+                   (  Ada.Finalization.Controlled
+                   with
+                      Kind_Of     => Single,
+                      Module      => Module'Unchecked_Access,
+                      Length      => 1,
+                      Self        => Null_Object,
+                      Definition  =>
+                         (  Name  => Null_Ptr,
+                            Meth  => (  False,
+                                        One_Argument_Operation'Access
+                                     ),
+                            Flags => METH_O,
+                            Doc   => Null_Ptr
+                         ),
+                      One_Argument_Operation => Operation
+                )  );
+         Data : Method_Data renames Method_Data_Capsule.Get (This).all;
+         Func : Handle;
+      begin
+         Data.Definition.Name := New_String (Name);
+         Data.Definition.Doc  := New_String (Doc);
+         Func.Ptr :=
+            Links.CFunction_NewEx
+            (  Data.Definition,
+               This.Ptr,
+               Module.Module
+            );
+         if Func.Ptr = Null_Object then
+            Check_Error;
+         end if;
+         if ( -1
+            =  Links.Object_SetAttrString
+               (  Module.Module,
+                  To_C (Name),
+                  Func.Ptr
+            )  )  then
+            Check_Error;
+         end if;
+         Data.Self := Func.Ptr;
+      end;
+   end Add_Function;
+
+   function No_Argument_Operation (Self : Object; Arg : Object)
+      return Object;
+   pragma Convention (C, No_Argument_Operation);
+
+   function No_Argument_Operation (Self : Object; Arg : Object)
+      return Object is
+      This : Method_Data renames To_Method_Data (Self).all;
+   begin
+      declare
+         Result : Handle;
+      begin
+         This.No_Argument_Operation (This.Module.all, Result);
+         if Result.Ptr /= Null_Object then
+            Links.IncRef (Result.Ptr);
+         end if;
+         return Result.Ptr;
+      end;
+   exception
+      when Python_Error =>
+         return Null_Object;
+      when Error : others =>
+         Throw_SystemError (Error);
+         return Null_Object;
+   end No_Argument_Operation;
+
+   procedure Add_Function
+             (  Module    : in out Python_Module;
+                Name      : String;
+                Doc       : String;
+                Operation : Module_No_Argument_Function_Ptr
+             )  is
+   begin
+      if Module.Definition = null then
+         Raise_Exception (Use_Error'Identity, Not_Created);
+      elsif Module.Module = Null_Object then
+         Module.Module := Module_Create (Module.Definition.all);
+         if Module.Module = Null_Object then
+            Raise_Exception (Use_Error'Identity, Cannot_Add_Module);
+         end if;
+         if 0 /= Links.Dict_SetItemString
+                 (  Links.Import_GetModuleDict.all,
+                    Value (Module.Definition.Name),
+                    Module.Module
+                 )  then
+            Raise_Exception (Use_Error'Identity, Cannot_Add_Module);
+         end if;
+      end if;
+      declare
+         This : constant Handle :=
+                Method_Data_Capsule.Create
+                (  Method_Data'
+                   (  Ada.Finalization.Controlled
+                   with
+                      Kind_Of     => None,
+                      Module      => Module'Unchecked_Access,
+                      Length      => 1,
+                      Self        => Null_Object,
+                      Definition  =>
+                         (  Name  => Null_Ptr,
+                            Meth  => (  False,
+                                        No_Argument_Operation'Access
+                                     ),
+                            Flags => METH_NOARGS,
+                            Doc   => Null_Ptr
+                         ),
+                      No_Argument_Operation => Operation
+                )  );
+         Data : Method_Data renames Method_Data_Capsule.Get (This).all;
+         Func : Handle;
+      begin
+         Data.Definition.Name := New_String (Name);
+         Data.Definition.Doc  := New_String (Doc);
+         Func.Ptr :=
+            Links.CFunction_NewEx
+            (  Data.Definition,
+               This.Ptr,
+               Module.Module
+            );
+         if Func.Ptr = Null_Object then
+            Check_Error;
+         end if;
+         if ( -1
+            =  Links.Object_SetAttrString
+               (  Module.Module,
+                  To_C (Name),
+                  Func.Ptr
+            )  )  then
+            Check_Error;
+         end if;
+         Data.Self := Func.Ptr;
+      end;
+   end Add_Function;
+
+   procedure Add_Hook
+             (  Hook  : Finalization_Hook_Ptr;
+                After : Boolean := False
+             )  is
+      use Hook_Arrays;
+   begin
+      if After then
+         Pre_Hooks_Count := Pre_Hooks_Count + 1;
+         Put (Pre_Hook_List, Pre_Hooks_Count, Hook);
+      else
+         Post_Hooks_Count := Post_Hooks_Count + 1;
+         Put (Post_Hook_List, Post_Hooks_Count, Hook);
+      end if;
+   end Add_Hook;
+
+   procedure Allocate
+             (  Storage   : in out External_Storage;
+                Address   : out System.Address;
+                Size      : System.Storage_Elements.Storage_Count;
+                Alignment : System.Storage_Elements.Storage_Count
+             )  is
+   begin
+      Address := Storage.Value;
+   end Allocate;
 
    function As_Integer64 (Value : Object)
       return Interfaces.Integer_64 is
@@ -894,6 +1467,20 @@ package body Py is
             (  Source    : String;
                File_Name : String
             )  return Handle is
+
+      Module : Handle;
+      Func   : Handle;
+   begin
+      Compile (Source, File_Name, Module, Func);
+      return Func;
+   end Compile;
+
+   procedure Compile
+             (  Source      : String;
+                File_Name   : String;
+                Module      : out Handle;
+                Entry_Point : out Handle
+             )  is
       function Get_Name return String is
          Line_Start : Boolean := True;
          Pointer    : Integer := Source'First;
@@ -939,11 +1526,11 @@ package body Py is
          return "";
       end Get_Name;
 
-      Name   : constant String := Get_Name;
-      Code   : Handle;
-      Module : Handle;
-      Func   : Handle;
+      Name : constant String := Get_Name;
+      Code : Handle;
    begin
+      Invalidate (Module);
+      Invalidate (Entry_Point);
       if Name'Length = 0 then
          Raise_Exception
          (  Data_Error'Identity,
@@ -967,12 +1554,137 @@ package body Py is
       if Module.Ptr = Null_Object then
          Check_Error;
       end if;
-      Func.Ptr := Links.Object_GetAttrString (Module.Ptr, To_C (Name));
-      if Func.Ptr = Null_Object then
+      Entry_Point.Ptr :=
+         Links.Object_GetAttrString (Module.Ptr, To_C (Name));
+      if Entry_Point.Ptr = Null_Object then
          Check_Error;
       end if;
-      return Func;
    end Compile;
+
+   --  function Compile
+   --           (  Source    : String;
+   --              File_Name : String
+   --           )  return Handle is
+   --     function Get_Name return String is
+   --        Line_Start : Boolean := True;
+   --        Pointer    : Integer := Source'First;
+   --        Start      : Integer;
+   --     begin
+   --        while Pointer <= Source'Last loop
+   --           case Source (Pointer) is
+   --              when 'd' =>
+   --                 Pointer := Pointer + 1;
+   --                 if Line_Start then
+   --                    if Is_Prefix ("ef", Source, Pointer) then
+   --                       Pointer := Pointer + 2;
+   --                       Start   := Pointer;
+   --                       Get (Source, Pointer);
+   --                       if Start /= Pointer then
+   --                          Start := Pointer;
+   --                          while Pointer <= Source'Last loop
+   --                             case Source (Pointer) is
+   --                                when Character'Val (9)  |
+   --                                     Character'Val (13) |
+   --                                     ' '                |
+   --                                     '('                =>
+   --                                   return Source (Start..Pointer - 1);
+   --                                when others =>
+   --                                   Pointer := Pointer + 1;
+   --                             end case;
+   --                          end loop;
+   --                          return Source (Start..Pointer - 1);
+   --                       end if;
+   --                    end if;
+   --                 end if;
+   --                 Line_Start := False;
+   --              when Character'Val (10) =>
+   --                 Line_Start := True;
+   --                 Pointer    := Pointer + 1;
+   --              when Character'Val (9) | Character'Val (13) | ' ' =>
+   --                 Pointer := Pointer + 1;
+   --              when others =>
+   --                 Line_Start := False;
+   --                 Pointer := Pointer + 1;
+   --           end case;
+   --        end loop;
+   --        return "";
+   --     end Get_Name;
+   --
+   --     Name   : constant String := Get_Name;
+   --     Code   : Handle;
+   --     Module : Handle;
+   --     Func   : Handle;
+   --  begin
+   --     if Name'Length = 0 then
+   --        Raise_Exception
+   --        (  Data_Error'Identity,
+   --           "No function definition found"
+   --        );
+   --     end if;
+   --     Code.Ptr :=
+   --        Links.CompileString
+   --        (  To_C (Source),
+   --           To_C (File_Name),
+   --           File_Input
+   --        );
+   --     if Code.Ptr = Null_Object then
+   --        Check_Error;
+   --     end if;
+   --     Module.Ptr :=
+   --        Links.Import_ExecCodeModuleEx
+   --        (  To_C (File_Name & '.' & Name),
+   --           Code.Ptr
+   --        );
+   --     if Module.Ptr = Null_Object then
+   --        Check_Error;
+   --     end if;
+   --     Func.Ptr := Links.Object_GetAttrString (Module.Ptr, To_C (Name));
+   --     if Func.Ptr = Null_Object then
+   --        Check_Error;
+   --     end if;
+   --     return Func;
+   --  end Compile;
+
+   ModuleDef_HEAD_INIT : constant ModuleDef_Base :=
+                                  (  Base  => (1, Null_Object),
+                                     Init  => null,
+                                     Index => 0,
+                                     Copy  => Null_Object
+                                 );
+   procedure Create
+             (  Module : in out Python_Module;
+                Name   : String;
+                Doc    : String
+             )  is
+   begin
+      if Module.Definition /= null then
+         Raise_Exception
+         (  Use_Error'Identity,
+            "The module is already created"
+         );
+      end if;
+      Module.Definition := new ModuleDef'
+                               (  Base     => ModuleDef_HEAD_INIT,
+                                  Name     => New_String (Name),
+                                  Doc      => New_String (Doc),
+                                  Size     => -1,
+                                  Methods  => null,
+                                  Slots    => null,
+                                  Traverse => null,
+                                  Clear    => null,
+                                  Free     => null
+                              );
+   end Create;
+
+   procedure Deallocate
+             (  Storage   : in out External_Storage;
+                Address   : System.Address;
+                Size      : System.Storage_Elements.Storage_Count;
+                Alignment : System.Storage_Elements.Storage_Count
+             )  is
+   begin
+      null;
+   end Deallocate;
 
    procedure Dict_DelItem (Dictionary : Handle; Key : Handle) is
    begin
@@ -1241,11 +1953,40 @@ package body Py is
       Links.GILState_Release (Lock.State);
    end Finalize;
 
+   procedure Finalize (Module : in out Python_Module) is
+      procedure Free is
+         new Ada.Unchecked_Deallocation (ModuleDef, ModuleDef_Ptr);
+   begin
+      if Module.Definition /= null then
+         Free (Module.Definition.Name);
+         Free (Module.Definition.Doc);
+         Free (Module.Definition);
+         Free (Module.Definition);
+      end if;
+   end Finalize;
+
+   procedure Finalize (Data : in out Method_Data) is
+   begin
+      Free (Data.Definition.Name);
+      Free (Data.Definition.Doc);
+   end Finalize;
+
    function FinalizeEx return int is
+      use Hook_Arrays;
+      Result : int;
    begin
       TypeError   := Null_Object;
       SystemError := Null_Object;
-      return Links.FinalizeEx.all;
+      for Index in 1..Pre_Hooks_Count loop
+         Get (Pre_Hook_List, Index).all;
+      end loop;
+      Pre_Hooks_Count := 0;
+      Result := Links.FinalizeEx.all;
+      for Index in 1..Post_Hooks_Count loop
+         Get (Post_Hook_List, Index).all;
+      end loop;
+      Post_Hooks_Count := 0;
+      return Result;
    end FinalizeEx;
 
    function Float_AsDouble (Object : Handle) return double is
@@ -1272,6 +2013,19 @@ package body Py is
       return Result;
    end Float_Type;
 
+   function Get (Reference : Weak_Handle) return Handle is
+      Result : Handle;
+   begin
+      if Reference.Reference.Ptr /= Null_Object then
+         Result.Ptr :=
+            Links.Weakref_GetObject (Reference.Reference.Ptr);
+         if Result.Ptr /= Null_Object then
+            Links.IncRef (Result.Ptr);
+         end if;
+      end if;
+      return Result;
+   end Get;
+
 -- function GILState_Check return Boolean is
 -- begin
 --    return 0 /= Links.GILState_Check.all;
@@ -1281,6 +2035,12 @@ package body Py is
    begin
       Links.InitializeEx (0);
    end Initialize;
+
+   function IsInitialized return Boolean is
+   begin
+      return Links.IsInitialized /= null and then
+             Links.IsInitialized.all /= 0;
+   end IsInitialized;
 
    function Import
             (  File_Name  : String;
@@ -1505,6 +2265,12 @@ package body Py is
       return Result;
    end Import_ImportModule;
 
+   function Index_Check (Value : Handle) return Boolean is
+   begin
+      Check_Handle (Value);
+      return Links.Index_Check (Value.Ptr) = 1;
+   end Index_Check;
+
    procedure Initialize (Lock : in out Global_Interpreter_Lock) is
    begin
       Lock.State := Links.GILState_Ensure.all;
@@ -1548,6 +2314,18 @@ package body Py is
    begin
       if Object.Ptr /= Null_Object then
          Links.IncRef (Object.Ptr);
+      end if;
+   end Adjust;
+
+   procedure Adjust (Data : in out Method_Data) is
+   begin
+      if Data.Definition.Name /= Null_Ptr then
+         Data.Definition.Name :=
+            New_STring (Value (Data.Definition.Name));
+      end if;
+      if Data.Definition.Doc /= Null_Ptr then
+         Data.Definition.Doc :=
+            New_STring (Value (Data.Definition.Doc));
       end if;
    end Adjust;
 
@@ -1660,6 +2438,48 @@ package body Py is
       return Result;
    end Iter_Next;
 
+   Var_Head_Size : Storage_Count := 0;
+
+   function Get_Basic_Size (Object : Handle) return ssize_t is
+   begin
+      Check_Handle (Object);
+      if not Is_In (Object, Type_Type) then
+         Raise_Exception (Use_Error'Identity, Not_A_Type);
+      end if;
+      if Var_Head_Size = 0 then
+         declare
+            use Ada.Characters.Latin_1;
+            Args   : Handle;
+            Size   : Handle;
+            Helper : Handle;
+         begin
+            Helper :=
+               Compile
+               (  "def ListSizeOf():" & LF &
+                  "   x = list();"    & LF &
+                  "   return x.__sizeof__()",
+                  "py.adb"
+               );
+            Args := Py.Tuple_New (0);
+            Size := Py.Object_CallObject (Helper, Args, True);
+            Var_Head_Size :=
+               Storage_Count (Links.Long_AsLong (Size.Ptr)) -
+               chars_ptr'Max_Size_In_Storage_Elements       -
+               ssize_t'Max_Size_In_Storage_Elements;
+         end;
+      end if;
+      declare
+         Result : ssize_t;
+         pragma Import (Ada, Result);
+         for Result'Address
+            use System.Address (Object.Ptr) +
+                Var_Head_Size               +
+                chars_ptr'Max_Size_In_Storage_Elements;
+      begin
+         return Result;
+      end;
+   end Get_Basic_Size;
+
    procedure List_Append (List : Handle; Item : Handle) is
    begin
       Check_Handle (List);
@@ -1757,6 +2577,8 @@ package body Py is
       Check_Handle (Item);
       if Links.List_SetItem (List.Ptr, Index, Item.Ptr) = -1 then
          Check_Error;
+      else
+         Links.IncRef (Item.Ptr); -- Success, reference stolen
       end if;
    end List_SetItem;
 
@@ -1952,6 +2774,12 @@ package body Py is
       end if;
    end Module_GetName;
 
+   function No_Arguments return Argument_List is
+      Result : Argument_List (0);
+   begin
+      return Result;
+   end No_Arguments;
+
    function No_Value return Handle is
       Result : Handle;
    begin
@@ -1959,6 +2787,517 @@ package body Py is
       Links.IncRef (Result.Ptr);
       return Result;
    end No_Value;
+
+   function Null_Handle return Handle is
+   begin
+      return (Ada.Finalization.Controlled with Null_Object);
+   end Null_Handle;
+
+   function Number_Absolute (Value : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Value);
+      Result.Ptr := Links.Number_Absolute (Value.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Absolute;
+
+   function Number_Add (Left : Handle; Right : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_Add (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Add;
+
+   function Number_And (Left : Handle;  Right : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_And (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      else
+         Links.IncRef (Result.Ptr);
+      end if;
+      return Result;
+   end Number_And;
+
+   function Number_AsSsize_t (Value : Handle; Error : Handle)
+      return size_t is
+      Result : size_t;
+   begin
+      Check_Handle (Value);
+      Check_Handle (Error);
+      Result := Links.Number_AsSsize_t (Value.Ptr, Error.Ptr);
+      return Result;
+   end Number_AsSsize_t;
+
+   function Number_Check (Value : Handle) return Boolean is
+   begin
+      Check_Handle (Value);
+      return Links.Number_Check (Value.Ptr) = 1;
+   end Number_Check;
+
+   function Number_Divmod (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_Divmod (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Divmod;
+
+   function Number_Float (Value : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Value);
+      Result.Ptr := Links.Number_Float (Value.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Float;
+
+   function Number_FloorDivide (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_FloorDivide (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_FloorDivide;
+
+   function Number_Index (Value : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Value);
+      Result.Ptr := Links.Number_Index (Value.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Index;
+
+   function Number_InPlaceAdd (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_InPlaceAdd (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_InPlaceAdd;
+
+   function Number_InPlaceAnd (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_InPlaceAnd (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_InPlaceAnd;
+
+   function Number_InPlaceFloorDivide (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr :=
+         Links.Number_InPlaceFloorDivide (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_InPlaceFloorDivide;
+
+   function Number_InPlaceLshift (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_InPlaceAnd (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end ;
+
+   function Number_InPlaceMatrixMultiply
+            (  Left  : Handle;
+               Right : Handle
+            )  return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_InPlaceAnd (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end ;
+
+   function Number_InPlaceMultiply (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_InPlaceAnd (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end ;
+
+   function Number_InPlaceOr (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_InPlaceAnd (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end ;
+
+   function Number_InPlacePower
+            (  Left     : Handle;
+               Right    : Handle;
+               Optional : Handle
+            )  return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Check_Handle (Optional);
+      Result.Ptr :=
+         Links.Number_InPlacePower (Left.Ptr, Right.Ptr, Optional.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_InPlacePower;
+
+   function Number_InPlacePower (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr :=
+         Links.Number_InPlacePower (Left.Ptr, Right.Ptr, Links.None);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_InPlacePower;
+
+   function Number_InPlaceRemainder (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr :=
+         Links.Number_InPlaceRemainder (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_InPlaceRemainder;
+
+   function Number_InPlaceRshift (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_InPlaceAnd (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end ;
+
+   function Number_InPlaceSubtract (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_InPlaceAnd (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end ;
+
+   function Number_InPlaceTrueDivide (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr :=
+         Links.Number_InPlaceTrueDivide (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_InPlaceTrueDivide;
+
+   function Number_InPlaceXor (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_InPlaceXor (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_InPlaceXor;
+
+   function Number_Invert (Value : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Value);
+      Result.Ptr := Links.Number_Invert (Value.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Invert;
+
+   function Number_Long (Value : Handle)  return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Value);
+      Result.Ptr := Links.Number_Long (Value.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Long;
+
+   function Number_Lshift (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_Lshift (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Lshift;
+
+   function Number_MatrixMultiply (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_MatrixMultiply (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_MatrixMultiply;
+
+   function Number_Multiply (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_Multiply (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Multiply;
+
+   function Number_Negative (Value : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Value);
+      Result.Ptr := Links.Number_Negative (Value.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Negative;
+
+   function Number_Or (Left : Handle; Right : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_Or (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Or;
+
+   function Number_Positive (Value : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Value);
+      Result.Ptr := Links.Number_Positive (Value.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Positive;
+
+   function Number_Power
+        (  Left     : Handle;
+           Right    : Handle;
+           Optional : Handle
+        )  return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Check_Handle (Optional);
+      Result.Ptr :=
+         Links.Number_Power (Left.Ptr, Right.Ptr, Optional.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Power;
+
+   function Number_Power (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr :=
+         Links.Number_Power (Left.Ptr, Right.Ptr, Links.None);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Power;
+
+   function Number_Remainder (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_Remainder (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Remainder;
+
+   function Number_Rshift (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_Rshift (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Rshift;
+
+   function Number_Subtract (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_Subtract (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Subtract;
+
+   function Number_ToBase (Value : Handle; Base : Base_Type)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Value);
+      case Base is
+         when Binary =>
+            Result.Ptr := Links.Number_ToBase (Value.Ptr, 2);
+         when Octal =>
+            Result.Ptr := Links.Number_ToBase (Value.Ptr, 8);
+         when Decimal =>
+            Result.Ptr := Links.Number_ToBase (Value.Ptr, 10);
+         when Hexadecimal =>
+            Result.Ptr := Links.Number_ToBase (Value.Ptr, 16);
+      end case;
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_ToBase;
+
+   function Number_TrueDivide (Left : Handle; Right : Handle)
+      return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_TrueDivide (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_TrueDivide;
+
+   function Number_Xor (Left : Handle; Right : Handle) return Handle is
+      Result : Handle;
+   begin
+      Check_Handle (Left);
+      Check_Handle (Right);
+      Result.Ptr := Links.Number_Xor (Left.Ptr, Right.Ptr);
+      if Result.Ptr = Null_Object then
+         Check_Error;
+      end if;
+      return Result;
+   end Number_Xor;
 
    function Object_Bytes (Object : Handle) return Handle is
       Result : Handle;
@@ -2062,10 +3401,10 @@ package body Py is
    end Object_GenericGetAttr;
 
    procedure Object_GenericSetAttr
-            (  Object : Handle;
-               Name   : Handle;
-               Value  : Handle
-            )  is
+             (  Object : Handle;
+                Name   : Handle;
+                Value  : Handle
+             )  is
    begin
       Check_Handle (Object);
       Check_Handle (Name);
@@ -2182,16 +3521,16 @@ package body Py is
          begin
             Helper :=
                Compile
-               (  "import sys"         & LF &
-                  "def FloatSizeOf():" & LF &
+               (  "def FloatSizeOf():" & LF &
                   "   x = 0.0;"        & LF &
-                  "   return sys.getsizeof(x)",
+                  "   return x.__sizeof__()",
                   "py.adb"
                );
             Args := Py.Tuple_New (0);
             Size := Py.Object_CallObject (Helper, Args, True);
             Head_Size :=
-               ssize_t (Links.Long_AsLong (Size.Ptr)) - double'Size / 8;
+               ssize_t (Links.Long_AsLong (Size.Ptr)) -
+               double'Max_Size_In_Storage_Elements;
          end;
       end if;
       return Head_Size;
@@ -2237,12 +3576,12 @@ package body Py is
       Check_Handle (Left);
       Check_Handle (Right);
       case Operation is
-         when LT => Op := 0;
-         when LE => Op := 1;
-         when EQ => Op := 2;
-         when NE => Op := 3;
-         when GT => Op := 4;
-         when GE => Op := 5;
+         when LT => Op := Py_LT;
+         when LE => Op := Py_LE;
+         when EQ => Op := Py_EQ;
+         when NE => Op := Py_NE;
+         when GT => Op := Py_GT;
+         when GE => Op := Py_GE;
       end case;
       case Links.Object_RichCompareBool (Left.Ptr, Right.Ptr, Op) is
          when 0 =>
@@ -2390,6 +3729,54 @@ package body Py is
       return Result;
    end Object_Type;
 
+   function Object_Super (Object : Handle; Name : String)
+      return Handle is
+      Builtins   : Handle;
+      Arguments  : Handle;
+      Super_Type : Handle;
+      Result     : Handle;
+   begin
+      Builtins   := Import_AddModule ("builtins");
+      Super_Type := Object_GetAttrString (Builtins, "super");
+      Arguments  := Tuple_New (2);
+      Tuple_SetItem (Arguments, 0, Object_Type (Object));
+      Tuple_SetItem (Arguments, 1, Object);
+      Result :=
+         Object_GetAttrString
+         (  Object_CallObject (Super_Type, Arguments, True),
+            Name
+         );
+       if 0 /= Callable_Check (Result) then
+          return Result;
+       else
+          Throw_NameError ('"' & Name & """ is not callable");
+          return Result;
+       end if;
+   end Object_Super;
+
+   function Parse
+            (  Args     : Handle;
+               Keywords : Handle;
+               List     : Argument_List
+            )  return Actual_Argument_List is
+   begin
+      Check_Handle (Args);
+      Check_Handle (Keywords);
+      declare
+         Object_List : constant Object_Array :=
+                          Parse (Args.Ptr, Keywords.Ptr, List);
+         Result      : Actual_Argument_List (Object_List'Range);
+      begin
+         for Index in Result'Range loop
+            if Object_List (Index) /= Null_Object then
+               Result (Index).Ptr := Object_List (Index);
+               Links.IncRef (Result (Index).Ptr);
+            end if;
+         end loop;
+         return Result;
+      end;
+   end Parse;
+
    function Parse
             (  Args     : Object;
                Keywords : Object;
@@ -2451,7 +3838,7 @@ package body Py is
                declare
                   Name : constant String := As_String (Key);
                begin
-                  if 0 >= Locate (List.Keys, Name) then
+                  if 0 = Locate (List.Keys, Name) then
                      Error ("Unmatched argument " & Quote (Name));
                   end if;
                end;
@@ -2690,21 +4077,34 @@ package body Py is
       return Result;
    end Sequence_Tuple;
 
+   procedure Set
+             (  Reference : in out Weak_Handle;
+                Object    : Handle
+             )  is
+   begin
+      Invalidate (Reference.Reference);
+      if Object.Ptr /= Null_Object then
+         Reference.Reference.Ptr :=
+            Links.Weakref_NewRef (Object.Ptr, Null_Object);
+         Links.IncRef (Reference.Reference.Ptr);
+      end if;
+   end Set;
+
    procedure Set_Add (Set : Handle; Item : Handle) is
-      Result : int;
    begin
       Check_Handle (Set);
       Check_Handle (Item);
-      Result := Links.Set_Add (Set.Ptr, Item.Ptr);
-      Check_Error;
+      if -1 = Links.Set_Add (Set.Ptr, Item.Ptr) then
+         Check_Error;
+      end if;
    end Set_Add;
 
    procedure Set_Clear (Set : Handle) is
-      Result : int;
    begin
       Check_Handle (Set);
-      Result := Links.Set_Clear (Set.Ptr);
-      Check_Error;
+      if -1 = Links.Set_Clear (Set.Ptr) then
+         Check_Error;
+      end if;
    end Set_Clear;
 
    function Set_Contains (Set : Handle; Item : Handle) return Boolean is
@@ -2766,6 +4166,12 @@ package body Py is
       return Result;
    end Set_Type;
 
+   function Storage_Size (Storage : External_Storage)
+      return System.Storage_Elements.Storage_Count is
+   begin
+      return System.Storage_Elements.Storage_Count'Last;
+   end Storage_Size;
+
    function Sys_GetObject (Name : String) return Handle is
       Result : Handle;
    begin
@@ -2811,6 +4217,14 @@ package body Py is
    begin
       Links.Err_SetString (Links.Exc_NameError.all, To_C (Message));
    end Throw_NameError;
+
+   procedure Throw_NotImplementedError (Message : String) is
+   begin
+      Links.Err_SetString
+      (  Links.Exc_NotImplementedError.all,
+         To_C (Message)
+      );
+   end Throw_NotImplementedError;
 
    procedure Throw_PermissionError (Message : String) is
    begin
@@ -2964,11 +4378,6 @@ package body Py is
       return (Ada.Finalization.Controlled with Result);
    end To_Python;
 
---     procedure Throw_ValueError (Message : String) is
---     begin
---        Links.Err_SetString (Links.Exc_ValueError, To_C (Message));
---     end Throw_ValueError;
-
    function Tuple_GetItem
              (  Tuple    : Handle;
                 Position : ssize_t
@@ -3017,6 +4426,7 @@ package body Py is
               )  is
    begin
       Check_Handle (Tuple);
+      Check_Handle (Item);
       if Links.Tuple_SetItem (Tuple.Ptr, Position, Item.Ptr) = 0  then
          Links.IncRef (Item.Ptr); -- Success, reference stolen
       else
@@ -3178,75 +4588,5 @@ package body Py is
       Result.Optional (Result.Length) := True;
       return Result;
    end "-";
-
-   package body Generic_Capsule is
-      Name : constant char_array :=
-                      To_C (Ada.Tags.Expanded_Name (Capsule_Name'Tag));
-
-      procedure Destructor (Capsule : Object);
-      pragma Convention (C, Destructor);
-
-      package Conversion is
-         new System.Address_To_Access_Conversions (Object_Type);
-
-      type Local_Ptr is access procedure (Capsule : Object);
-      pragma Convention (C, Local_Ptr);
-
-      function From_Local_Ptr is
-         new Ada.Unchecked_Conversion
-             (  Local_Ptr,
-                Capsule_Destructor_Ptr
-             );
-
-      procedure Free is
-         new Ada.Unchecked_Deallocation
-             (  Object_Type,
-                Conversion.Object_Pointer
-             );
-
-      procedure Destructor (Capsule : Object) is
-         Ptr : Conversion.Object_Pointer;
-      begin
-         Ptr := Conversion.To_Pointer
-                (  Links.Capsule_GetPointer (Capsule, Name)
-                );
-         Free (Ptr);
-      end Destructor;
-
-      function Create (Value : Object_Type) return Handle is
-         Ptr    : constant Object_Type_Ptr := new Object_Type'(Value);
-         Result : Handle;
-      begin
-         Result.Ptr :=
-            Links.Capsule_New
-            (  Ptr.all'Address,
-               Name,
-               From_Local_Ptr (Destructor'Access)
-            );
-         return Result;
-      end Create;
-
-      function Get (Value : Handle) return Object_Type_Ptr is
-         Address : System.Address;
-      begin
-         Check_Handle (Value);
-         Address := Links.Capsule_GetPointer (Value.Ptr, Name);
-         if Address = System.Null_Address then
-            Check_Error;
-            return null;
-         else
-            return Conversion.To_Pointer (Address).all'Unchecked_Access;
-         end if;
-      end Get;
-
-      function Is_Valid (Value : Handle) return Boolean is
-      begin
-         if Value.Ptr = Null_Object then
-            return False;
-         end if;
-         return Links.Capsule_IsValid (Value.Ptr, Name) = 1;
-      end Is_Valid;
-
-   end Generic_Capsule;
 
 end Py;

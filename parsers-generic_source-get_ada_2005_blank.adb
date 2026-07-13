@@ -4,7 +4,7 @@
 --        Get_Ada_2005_Blank                       Winter, 2009       --
 --  Implementation                                                    --
 --                                                                    --
---                                Last revision :  15:03 28 Mar 2009  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -28,7 +28,6 @@
 
 with Ada.Exceptions;     use Ada.Exceptions;
 with Ada.IO_Exceptions;  use Ada.IO_Exceptions;
-with Ada.Strings.Maps;   use Ada.Strings.Maps;
 with Strings_Edit;       use Strings_Edit;
 with Strings_Edit.UTF8;  use Strings_Edit.UTF8;
 
@@ -57,9 +56,10 @@ begin
             exception
                when Data_Error =>
                   Set_Pointer (Code, Start);
+                  Set_Pointer (Code, Start);
                   Raise_Exception
                   (  Syntax_Error'Identity,
-                     "Illegal UTF-8 encoding at " & Image (Link (Code))
+                     Encoding_Error & Image (Link (Code))
                   );
             end;
             case Symbol is

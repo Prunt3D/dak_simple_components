@@ -25,7 +25,6 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 
-with Ada.Text_IO;   use Ada.Text_IO;
 with Interfaces.C;  use Interfaces.C;
 with Julia;         use Julia;
 

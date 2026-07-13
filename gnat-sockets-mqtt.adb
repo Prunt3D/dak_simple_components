@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Spring, 2016       --
 --                                                                    --
---                                Last revision :  09:13 12 Jun 2021  --
+--                                Last revision :  14:35 11 Mar 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -2243,7 +2243,7 @@ package body GNAT.Sockets.MQTT is
    function "/" (Left : Topics_List; Right : String)
       return Topics_List is
       Object : constant Topic_Item_Data_Ptr :=
-                        new Topic_Item_Data (Left'Length);
+                        new Topic_Item_Data (Right'Length);
       Result : Topics_List (1..Left'Length + 1);
    begin
       Set (Result (Left'Length + 1), Object);

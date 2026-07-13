@@ -3,7 +3,7 @@
 --     Universally_Unique_Identifiers              Luebeck            --
 --  Implementation                                 Winter, 2021       --
 --                                                                    --
---                                Last revision :  13:12 05 Jan 2021  --
+--                                Last revision :  17:53 15 Jan 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -35,13 +35,17 @@ package body Universally_Unique_Identifiers is
       new Ada.Numerics.Discrete_Random (Unsigned_64);
    use Random_Numbers;
 
-   Dice   : Generator;
-   Epoch  : constant Time := Formatting.Time_Of (2000, 1, 1);
+   Dice    : Generator;
+   Epoch   : constant Time := Formatting.Time_Of (2000, 1, 1);
    --
    -- 100 nanosecods since October 15, 1582 to January 1, 2000
    --
-   Shift  : constant := (12_2192_9280_0000 + 9466_8480_0000) * 1_000_0;
-   Count  : Unsigned_16 := 0;
+   Shift   : constant := (12_2192_9280_0000 + 9466_8480_0000) * 1_000_0;
+   --
+   -- Millisceonds since January 1, 1970 to January 1, 2000
+   --
+   Shift_1 : constant := 	9466_8480_0000;
+   Count   : Unsigned_16 := 0;
 
    function Create return UUID_Value is
       H : constant Unsigned_64 := Random (Dice);
@@ -56,8 +60,8 @@ package body Universally_Unique_Identifiers is
           5 => Byte (Shift_Right (H, 8*3) and 16#FF#),
           6 => Byte (Shift_Right (H, 8*2) and 16#FF#),
 
-          7 => Byte (Shift_Right (H, 8*1) and 16#FF#),
-          8 => Byte (             H       and 16#0F#) or 16#40#,
+          7 => Byte (Shift_Right (H, 8*1) and 16#0F#) or 16#40#,
+          8 => Byte (             H       and 16#FF#),
 
           9 => Byte (Shift_Right (L, 8*7) and 16#3F#) or 16#40#,
          10 => Byte (Shift_Right (L, 8*6) and 16#FF#),
@@ -72,41 +76,103 @@ package body Universally_Unique_Identifiers is
    end Create;
 
    function Create
-            (  ID    : Node_ID;
-               Stamp : Time := Clock
+            (  ID      : Node_ID;
+               Stamp   : Time := Clock;
+               Version : UUID_Version := UUID_v1
             )  return UUID_Value is
-      Ticks  : constant Unsigned_64 :=
-                        (  Unsigned_64
-                           (  Long_Float (Stamp - Epoch)
-                           *  1_000_000_0.0
-                           )
-                        +  Shift
-                        );
+      Ticks : constant Unsigned_64 :=
+                       (  Unsigned_64
+                          (  Long_Float (Stamp - Epoch)
+                          *  1_000_000_0.0
+                          )
+                       +  Shift
+                       );
    begin
       Count := Count + 1;
-      return
-      (   1 => Byte (Shift_Right (Ticks, 8*7) and 16#FF#),
-          2 => Byte (Shift_Right (Ticks, 8*6) and 16#FF#),
-          3 => Byte (Shift_Right (Ticks, 8*5) and 16#FF#),
-          4 => Byte (Shift_Right (Ticks, 8*4) and 16#FF#),
+      if Version = UUID_v6 then
+         return
+         (   1 => Byte (Shift_Right (Ticks, 8*7 - 4) and 16#FF#),
+             2 => Byte (Shift_Right (Ticks, 8*6 - 4) and 16#FF#),
+             3 => Byte (Shift_Right (Ticks, 8*5 - 4) and 16#FF#),
+             4 => Byte (Shift_Right (Ticks, 8*4 - 4) and 16#FF#),
 
-          5 => Byte (Shift_Right (Ticks, 8*3) and 16#FF#),
-          6 => Byte (Shift_Right (Ticks, 8*2) and 16#FF#),
+             5 => Byte (Shift_Right (Ticks, 8*3 - 4) and 16#FF#),
+             6 => Byte (Shift_Right (Ticks, 8*2 - 4) and 16#FF#),
 
-          7 => Byte (Shift_Right (Ticks, 8*1) and 16#FF#),
-          8 => Byte (             Ticks       and 16#0F#) or 16#10#,
+             7 => Byte (Shift_Right (Ticks, 8*1) and 16#0F#) or 16#60#,
+             8 => Byte (             Ticks       and 16#FF#),
 
-          9 => Byte (Shift_Right (Count, 8*1) and 16#3F#) or 16#40#,
-         10 => Byte (             Count       and 16#0F#),
+             9 => Byte (Shift_Right (Count, 8*1) and 16#3F#) or 16#80#,
+            10 => Byte (             Count       and 16#FF#),
 
-         11 => Byte (Character'Pos (ID (1))),
-         12 => Byte (Character'Pos (ID (2))),
-         13 => Byte (Character'Pos (ID (3))),
-         14 => Byte (Character'Pos (ID (4))),
-         15 => Byte (Character'Pos (ID (5))),
-         16 => Byte (Character'Pos (ID (6)))
-      );
+            11 => Byte (Character'Pos (ID (1))),
+            12 => Byte (Character'Pos (ID (2))),
+            13 => Byte (Character'Pos (ID (3))),
+            14 => Byte (Character'Pos (ID (4))),
+            15 => Byte (Character'Pos (ID (5))),
+            16 => Byte (Character'Pos (ID (6)))
+         );
+      else
+         return
+         (   1 => Byte (Shift_Right (Ticks, 8*3) and 16#FF#),
+             2 => Byte (Shift_Right (Ticks, 8*2) and 16#FF#),
+             3 => Byte (Shift_Right (Ticks, 8*1) and 16#FF#),
+             4 => Byte (             Ticks       and 16#FF#),
+
+             5 => Byte (Shift_Right (Ticks, 8*5) and 16#FF#),
+             6 => Byte (Shift_Right (Ticks, 8*4) and 16#FF#),
+
+             7 => Byte (Shift_Right (Ticks, 8*7) and 16#0F#) or 16#10#,
+             8 => Byte (Shift_Right (Ticks, 8*6) and 16#FF#),
+
+             9 => Byte (Shift_Right (Count, 8*1) and 16#3F#) or 16#80#,
+            10 => Byte (             Count       and 16#FF#),
+
+            11 => Byte (Character'Pos (ID (1))),
+            12 => Byte (Character'Pos (ID (2))),
+            13 => Byte (Character'Pos (ID (3))),
+            14 => Byte (Character'Pos (ID (4))),
+            15 => Byte (Character'Pos (ID (5))),
+            16 => Byte (Character'Pos (ID (6)))
+         );
+      end if;
    end Create;
+
+   function Create_v7 (Stamp : Time := Clock) return UUID_Value is
+      H     : constant Unsigned_64 := Random (Dice);
+      L     : constant Unsigned_64 := Random (Dice);
+      Ticks : constant Unsigned_64 :=
+                        (  Unsigned_64
+                           (  Long_Float (Stamp - Epoch)
+                           *  1_000.0
+                           )
+                        +  Shift_1
+                        );
+   begin
+      return
+      (   1 => Byte (Shift_Right (Ticks, 8*5) and 16#FF#),
+          2 => Byte (Shift_Right (Ticks, 8*4) and 16#FF#),
+          3 => Byte (Shift_Right (Ticks, 8*3) and 16#FF#),
+          4 => Byte (Shift_Right (Ticks, 8*2) and 16#FF#),
+
+          5 => Byte (Shift_Right (Ticks, 8*1) and 16#FF#),
+          6 => Byte (             Ticks       and 16#FF#),
+
+          7 => Byte (Shift_Right (H,     8*2) and 16#0F#) or 16#70#,
+          8 => Byte (Shift_Right (H,     8*1) and 16#FF#),
+
+          9 => Byte (Shift_Right (L, 8*7) and 16#3F#)     or 16#80#,
+         10 => Byte (Shift_Right (L, 8*6) and 16#FF#),
+         11 => Byte (Shift_Right (L, 8*5) and 16#FF#),
+         12 => Byte (Shift_Right (L, 8*4) and 16#FF#),
+
+         13 => Byte (Shift_Right (L, 8*3) and 16#FF#),
+         14 => Byte (Shift_Right (L, 8*2) and 16#FF#),
+         15 => Byte (Shift_Right (L, 8*1) and 16#FF#),
+         16 => Byte (             L       and 16#FF#)
+
+      );
+   end Create_v7;
 
    function "<" (Left, Right : UUID_Value) return Boolean is
    begin

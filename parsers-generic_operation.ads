@@ -3,7 +3,7 @@
 --     Parsers.Generic_Operation                   Luebeck            --
 --  Interface                                      Winter, 2004       --
 --                                                                    --
---                                Last revision :  11:37 13 Oct 2007  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -91,7 +91,7 @@ package Parsers.Generic_Operation is
 -- Descriptor_Class -- Classes of operation descriptors
 --
    type Descriptor_Class is
-        (Stub, Operator, Default, Sublist, Tuple, Ligature);
+        (Stub, Operator, Default, Sublist, Tuple, Ligature, Switch);
 --
 -- Descriptor -- Operation stack item
 --

@@ -3,7 +3,7 @@
 --     GNAT.Sockets.Server.Secure                  Luebeck            --
 --  Implementation                                 Winter, 2015       --
 --                                                                    --
---                                Last revision :  18:41 01 Aug 2019  --
+--                                Last revision :  15:55 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -80,6 +80,12 @@ package body GNAT.Sockets.Server.Secure is
          Prepare (Self, Client.all, TLS.Session);
          if Factory.Trace_Session then
             Trace (Self, "TLS handshake engaged");
+         end if;
+         if Client.Client then
+            Server_Name_Set
+            (  TLS.Session,
+               Get_Session_Host (Client.all)
+            );
          end if;
       end;
       return Result;
@@ -172,6 +178,12 @@ package body GNAT.Sockets.Server.Secure is
       null;
    end Handshake_Completed;
 
+   procedure Initialize (Factory : in out Abstract_GNUTLS_Factory) is
+   begin
+      Initialize (Connections_Factory (Factory));
+      Set_Keep_Host_Name (Factory, True);
+   end Initialize;
+
    function Is_TLS_Capable
             (  Factory : Abstract_GNUTLS_Factory
             )  return Boolean is
@@ -190,6 +202,15 @@ package body GNAT.Sockets.Server.Secure is
    begin
       return Factory.Trace_Session;
    end Is_Trace_Session;
+
+   procedure Prepare
+             (  Factory : in out Abstract_GNUTLS_Factory;
+                Client  : in out Connection'Class;
+                Session : in out Session_Type
+             )  is
+   begin
+      null;
+   end Prepare;
 
    procedure Process
              (  Transport : in out TLS_Session;
@@ -267,6 +288,7 @@ package body GNAT.Sockets.Server.Secure is
                      end if;
                      Connected (Listener, Client);
                      Client.Session := Session_Active;
+                     Activated (Client);
                   exception
                      when others =>
                         if Client.Session = Session_Connected then

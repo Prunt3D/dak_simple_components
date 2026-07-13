@@ -3,7 +3,7 @@
 --     Parsers.Generic_Operation.                  Luebeck            --
 --        Generic_Stack                            Winter, 2004       --
 --  Interface                                                         --
---                                Last revision :  10:09 24 May 2020  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -122,6 +122,9 @@ package body Parsers.Generic_Operation.Generic_Stack is
                else
                   raise Unexpected_Operation;
                end if;
+            when Switch =>
+               Pop (Container);
+               return;
          end case;
       end loop;
    exception
@@ -178,6 +181,9 @@ package body Parsers.Generic_Operation.Generic_Stack is
                else
                   raise Association_Error;
                end if;
+            when Switch =>
+               Pop (Container);
+               return;
          end case;
       end loop;
    exception
@@ -208,6 +214,9 @@ package body Parsers.Generic_Operation.Generic_Stack is
                Pop (Container.Raw);
                Call (Container, This.Operation, 2);
             when Tuple | Stub | Sublist =>
+               return;
+            when Switch =>
+               Pop (Container);
                return;
          end case;
       end loop;
@@ -278,6 +287,8 @@ package body Parsers.Generic_Operation.Generic_Stack is
                else
                   raise Unexpected_Operation;
                end if;
+            when Switch =>
+               null;
          end case;
       end loop;
       if Explicit then
@@ -409,25 +420,33 @@ package body Parsers.Generic_Operation.Generic_Stack is
       Index : Index_Type := Mark (Container.Raw);
       This  : Descriptor := Top (Container.Raw);
    begin
-       case This.Class is
-         when Operator | Default | Ligature | Tuple | Sublist =>
-            if not (Unchecked or else (This.Operation and Operation))
-            then
-               raise Association_Error;
-            end if;
-         when Stub =>
-            if not Unchecked and then
-               not Is_Expected (Container, Operation)
-            then
-               raise Unexpected_Operation;
-            end if;
-      end case;
+      loop
+         case This.Class is
+            when Operator | Default | Ligature | Tuple | Sublist =>
+               if not (Unchecked or else (This.Operation and Operation))
+               then
+                  raise Association_Error;
+               end if;
+               exit;
+            when Stub =>
+               if not Unchecked and then
+                  not Is_Expected (Container, Operation)
+               then
+                  raise Unexpected_Operation;
+               end if;
+               exit;
+            when Switch =>
+               null;
+         end case;
+      end loop;
       loop
          case This.Class is
             when Operator | Default =>
                exit when This.Right < Left;
-            when Ligature | Stub | Sublist | Tuple=>
+            when Ligature | Stub | Sublist | Tuple =>
                exit;
+            when Switch =>
+               null;
          end case;
          Index := Index_Type'Pred (Index);
          This  := Get (Container.Raw, Index);
@@ -570,6 +589,14 @@ package body Parsers.Generic_Operation.Generic_Stack is
       end if;
       Pop (Container.Raw);
    end Pop;
+
+   procedure Push
+             (  Container : in out Stack'Class;
+                Item      : Descriptor
+             )  is
+   begin
+      Push (Container.Raw, Item);
+   end Push;
 
    procedure Replace
              (  Container   : in out Stack'Class;

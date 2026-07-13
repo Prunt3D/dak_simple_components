@@ -3,7 +3,7 @@
 --     Strings_Edit.UTF8.Wildcards                 Luebeck            --
 --  Implementation                                 Winter, 2007       --
 --                                                                    --
---                                Last revision :  22:44 07 Apr 2016  --
+--                                Last revision :  11:03 04 Dec 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -36,8 +36,8 @@ package body Strings_Edit.UTF8.Wildcards is
    --    Text    - The text
    --    Pointer - To start at
    --
-   -- An UTF-8 encoded character has the tail of octets 2#10xx_xxxx#.
-   -- Any other octet is the head of another character. The procedure
+   -- An  UTF-8  encoded  character has the tail of octets 2#10xx_xxxx#.
+   -- Any other octet is the head of another  character.  The  procedure
    -- skips one character (the head) and then loop over the tail.
    --
    -- Exceptions :

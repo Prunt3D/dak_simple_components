@@ -3,7 +3,7 @@
 --     Strings_Edit.Streams                        Luebeck            --
 --  Implementation                                 Spring, 2009       --
 --                                                                    --
---                                Last revision :  13:11 14 Sep 2019  --
+--                                Last revision :  10:31 12 Jul 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -114,5 +114,10 @@ package body Strings_Edit.Streams is
          Increment (Stream.Position, Item'Length);
       end;
    end Write;
+
+   function Unread (Stream : String_Stream) return String is
+   begin
+      return Stream.Data (Stream.Position..Stream.Length);
+   end Unread;
 
 end Strings_Edit.Streams;

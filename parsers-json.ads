@@ -3,7 +3,7 @@
 --     Parsers.JSON                                Luebeck            --
 --  Implementation                                 Autumn, 2019       --
 --                                                                    --
---                                Last revision :  19:57 14 Sep 2019  --
+--                                Last revision :  12:17 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -75,6 +75,64 @@ package Parsers.JSON is
       Value : JSON_Value;
    end record;
    type JSON_Pair_Array is array (Positive range <>) of JSON_Pair;
+--
+-- / -- Access JSON object value
+--
+--    Value - The object
+--    Key   - The key / Array index 1..
+--
+-- Returns :
+--
+--    The value
+--
+-- Exceptions :
+--
+--    Constraint_Error - Value is not an abject of the designated type
+--    End_Error        - There no such key
+--
+   function "/" (Value : JSON_Value; Key : String)
+      return Boolean;
+   function "/" (Value : JSON_Value; Key : String)
+       return JSON_Value;
+   function "/" (Value : JSON_Value; Key : String)
+      return JSON_Value_Type;
+   function "/" (Value : JSON_Value; Key : String)
+      return Long_Float;
+   function "/" (Value : JSON_Value; Key : String)
+      return String;
+
+   function "/" (Value : JSON_Value; Index : Positive)
+      return Boolean;
+   function "/" (Value : JSON_Value; Index : Positive)
+       return JSON_Value;
+   function "/" (Value : JSON_Value; Index : Positive)
+      return JSON_Value_Type;
+   function "/" (Value : JSON_Value; Index : Positive)
+      return Long_Float;
+   function "/" (Value : JSON_Value; Index : Positive)
+      return String;
+
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return Boolean;
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return JSON_Value;
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return JSON_Value_Type;
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return Long_Float;
+   function "/" (Value : JSON_Pair_Array_Ptr; Key : String)
+      return String;
+
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return Boolean;
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return JSON_Value;
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return JSON_Value_Type;
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return Long_Float;
+   function "/" (Value : JSON_Sequence_Ptr; Index : Positive)
+      return String;
 --
 -- Put -- Put a value in JSON format
 --

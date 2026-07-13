@@ -25,12 +25,9 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 
-with Ada.Exceptions;           use Ada.Exceptions;
-with Ada.Text_IO;              use Ada.Text_IO;
-with System.Storage_Elements;  use System.Storage_Elements;
+with Ada.Text_IO;  use Ada.Text_IO;
 
 with Ada.Unchecked_Conversion;
-with Ada.Unchecked_Deallocation;
 
 package body Py.Module is
 

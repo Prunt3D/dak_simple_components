@@ -3,7 +3,7 @@
 --  Interface                                      Luebeck            --
 --                                                 Spring, 2005       --
 --                                                                    --
---                                Last revision :  21:03 21 Apr 2009  --
+--                                Last revision :  12:14 29 Mar 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -25,6 +25,9 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 
+with Strings_Edit.Lexicographical_Order;
+use  Strings_Edit.Lexicographical_Order;
+
 package Strings_Edit.UTF8 is
    pragma Elaborate_Body (Strings_Edit.UTF8);
 --
@@ -32,6 +35,10 @@ package Strings_Edit.UTF8 is
 --
    type Code_Point is mod 2**32;
    subtype UTF8_Code_Point is Code_Point range 0..16#10FFFF#;
+   type UTF8_Code_Point_Array is
+      array (Positive range <>) of UTF8_Code_Point;
+   function Compare (Left, Right : UTF8_Code_Point_Array)
+      return Precedence;
 --
 -- Script_Base -- Supported bases of sub- and superscript integers
 --
@@ -88,15 +95,16 @@ package Strings_Edit.UTF8 is
                 Value   : out UTF8_Code_Point
              );
 --
--- Image -- Of an UTF-8 code point
+-- Image -- Of a code point or an arry of code points
 --
---    Value - The code point
+--    Value - The code point[s]
 --
 -- Returns :
 --
 --    UTF-8 encoded equivalent
 --
-   function Image (Value : UTF8_Code_Point) return String;
+   function Image (Value : UTF8_Code_Point)       return String;
+   function Image (Value : UTF8_Code_Point_Array) return String;
 --
 -- Put -- Put one UTF-8 code point
 --
@@ -119,7 +127,7 @@ package Strings_Edit.UTF8 is
                 Value       : UTF8_Code_Point
              );
 --
--- Length -- The length of an UTF-8 string
+-- Length -- The length of an UTF-8 encoded string
 --
 --    Source - The string containing UTF-8 encoded code points
 --
@@ -133,7 +141,18 @@ package Strings_Edit.UTF8 is
 --
    function Length (Source : String) return Natural;
 --
--- Skip -- Skip UTF-8 code point
+-- Size -- The size of an UTF-8 encoded string
+--
+--    Value - The point or an array of
+--
+-- Returns :
+--
+--    The size of UTF-8 encoded representation
+--
+   function Size (Value : UTF8_Code_Point      ) return Positive;
+   function Size (Value : UTF8_Code_Point_Array) return Natural;
+--
+-- Skip -- Skip an UTF-8 code point
 --
 --    Source  - UTF-8 encoded string
 --    Pointer - The position of the first UTF-8 code point to skip

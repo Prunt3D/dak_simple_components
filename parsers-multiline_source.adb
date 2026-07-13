@@ -3,7 +3,7 @@
 --     Parsers.Multiline_Source                    Luebeck            --
 --  Implementation                                 Winter, 2004       --
 --                                                                    --
---                                Last revision :  13:13 14 Sep 2019  --
+--                                Last revision :  10:48 02 Jul 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -43,6 +43,43 @@ package body Parsers.Multiline_Source is
       )  );
    end "<";
 
+   function "<" (Left, Right : Location) return Boolean is
+   begin
+      return Left.Next < Right.First;
+   end "<";
+
+   function "<=" (Left, Right : Position) return Boolean is
+   begin
+      return
+      (  Left.Line < Right.Line
+      or else
+         (  Left.Line = Right.Line
+         and then
+            Left.Column <= Right.Column
+      )  );
+   end "<=";
+
+   function ">" (Left, Right : Position) return Boolean is
+   begin
+      return Right < Left;
+   end ">";
+
+   function ">" (Left, Right : Location) return Boolean is
+   begin
+      return Left.First > Right.Next;
+   end ">";
+
+   function ">=" (Left, Right : Position) return Boolean is
+   begin
+      return Right <= Left;
+   end ">=";
+
+   function Contains (Left, Right : Location) return Boolean is
+   begin
+     return Left.First <= Right.First and then
+            Left.Next  >= Right.Next;
+   end Contains;
+
    procedure Finalize (Code : in out Source) is
    begin
       Free (Code.Buffer);
@@ -52,6 +89,67 @@ package body Parsers.Multiline_Source is
    begin
       return Code.Buffer = null;
    end End_Of;
+
+   procedure Get
+             (  Source  : String;
+                Pointer : in out Integer;
+                Value   : out Location
+             )  is
+      Index  : Integer := Pointer;
+      Result : Location;
+   begin
+      Get
+      (  Source  => Source,
+         Pointer => Index,
+         Value   => Integer (Result.First.Line), -- a
+         First   => 1
+      );
+      if Index >= Source'Last or else Source (Index) /= ':' then
+         raise Data_Error;
+      end if;
+      Index := Index + 1;
+      begin
+         Get
+         (  Source  => Source,
+            Pointer => Index,
+            Value   => Result.First.Column,      -- a:b
+            First   => 0
+         );
+         if Index < Source'Last      and then
+            Source (Index)     = '.' and then
+            Source (Index + 1) = '.'
+         then                                    -- a:b..
+            Index := Index + 2;
+            Get
+            (  Source  => Source,
+               Pointer => Index,
+               Value   => Result.Next.Column,    -- a:b..c
+               First   => 0
+            );
+            if Index <= Source'Last and then Source (Index) = ':' then
+               Index := Index + 1;
+               Result.Next.Line := Line_Number (Result.Next.Column);
+               Get
+               (  Source  => Source,             -- a:b..c:d
+                  Pointer => Index,
+                  Value   => Result.Next.Column,
+                  First   => 0
+               );
+               Result.Next.Column := Result.Next.Column + 1;
+            else
+               Result.Next.Line   := Result.First.Line;
+               Result.Next.Column := Result.Next.Column + 1;
+            end if;
+         else                                    -- a:b
+            Result.Next := Result.First;
+         end if;
+      exception
+         when Constraint_Error | End_Error =>
+            raise Data_Error;
+      end;
+      Pointer := Index;
+      Value   := Result;
+   end Get;
 
    function Get_Line (Code : Source'Class) return String is
    begin
@@ -172,7 +270,9 @@ package body Parsers.Multiline_Source is
 
    function Image (Link : Location) return String is
    begin
-      if Link.First = Link.Next then
+      if Link.First.Line > Link.Next.Line then
+         return "nowhere";
+      elsif Link.First = Link.Next then
          return
          (  Image (Integer (Link.First.Line))
          &  ":"
@@ -215,6 +315,18 @@ package body Parsers.Multiline_Source is
       return ((Code.Line, Code.Last), (Code.Line, Code.Pointer));
    end Link;
 
+   function Direct_Link (Code : Source; From, To : Integer)
+      return Location is
+   begin
+      if (  From < Code.Last
+         or else (To < From and then From - To > 1)
+         or else To > Code.Length
+         )  then
+         raise Ada.IO_Exceptions.Layout_Error;
+      end if;
+      return ((Code.Line, From), (Code.Line, To + 1));
+   end Direct_Link;
+
    function "&" (Left, Right : Location) return Location is
       Result : Location;
    begin
@@ -243,6 +355,25 @@ package body Parsers.Multiline_Source is
          raise;
    end Next_Line;
 
+   procedure Put
+             (  Destination : in out String;
+                Pointer     : in out Integer;
+                Value       : Location;
+                Field       : Natural   := 0;
+                Justify     : Strings_Edit.Alignment := Left;
+                Fill        : Character := ' '
+             )  is
+   begin
+      Put
+      (  Destination => Destination,
+         Pointer     => Pointer,
+         Value       => Image (Value),
+         Field       => Field,
+         Justify     => Justify,
+         Fill        => Fill
+      );
+   end Put;
+
    procedure Reset_Pointer (Code : in out Source'Class) is
    begin
       Code.Pointer := Code.Last;
@@ -250,7 +381,8 @@ package body Parsers.Multiline_Source is
 
    procedure Set_Pointer
              (  Code    : in out Source'Class;
-                Pointer : Integer
+                Pointer : Integer;
+                Advance : Boolean := True
              )  is
    begin
       if Code.Buffer = null then
@@ -262,7 +394,9 @@ package body Parsers.Multiline_Source is
             raise Ada.IO_Exceptions.Layout_Error;
          end if;
       end if;
-      Code.Last    := Code.Pointer;
+      if Advance then
+         Code.Last := Code.Pointer;
+      end if;
       Code.Pointer := Pointer;
    end Set_Pointer;
 
@@ -280,5 +414,18 @@ package body Parsers.Multiline_Source is
       end loop;
       Set_Pointer (Code, Link.Next.Column);
    end Skip;
+
+   function Value (Source : String) return Location is
+      Pointer : aliased Integer := Source'First;
+      Result  : Location;
+   begin
+      Get (Source, Pointer, SpaceAndTab);
+      Get (Source, Pointer, Result);
+      Get (Source, Pointer, SpaceAndTab);
+      if Pointer /= Source'Last + 1 then
+         raise Data_Error;
+      end if;
+      return Result;
+   end Value;
 
 end Parsers.Multiline_Source;

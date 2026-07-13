@@ -3,7 +3,7 @@
 --     Strings_Edit.Streams                        Luebeck            --
 --  Interface                                      Spring, 2009       --
 --                                                                    --
---                                Last revision :  14:23 11 Feb 2012  --
+--                                Last revision :  10:31 12 Jul 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -36,7 +36,7 @@ package Strings_Edit.Streams is
 --
 -- String_Stream -- A string stream, when read,  Data (Position..Length)
 --                  is amount of data available to read/write. Note that
--- before reading from the stream is  must  be  initialized  using  Set.
+-- before reading from the stream it  must  be  initialized  using  Set.
 -- Otherwise  the  result of reading will be the unitialized contents of
 -- the Data field.
 --
@@ -97,6 +97,16 @@ package Strings_Edit.Streams is
 --    Contraint_Error - no room in Stream
 --
    procedure Set (Stream : in out String_Stream; Content : String);
+--
+-- Unread -- The contents of the stream available to read
+--
+--    Stream - The stream object
+--
+-- Returns :
+--
+--    String written
+--
+   function Unread (Stream : String_Stream) return String;
 --
 -- Write -- Overrides Ada.Streams...
 --

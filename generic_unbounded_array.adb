@@ -3,7 +3,7 @@
 --     Generic_Unbounded_Array                     Luebeck            --
 --  Implementation                                 Spring, 2002       --
 --                                                                    --
---                                Last revision :  13:51 30 May 2014  --
+--                                Last revision :  22:39 14 Dec 2024  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -137,7 +137,7 @@ package body Generic_Unbounded_Array is
          Container.Vector :=
             new Object_Array_Type'
                 (Index..Index + Minimal_Size => Null_Element);
-      elsif Index not in Container.Vector'range then
+      elsif Index not in Container.Vector'Range then
          declare
             New_Vector : Object_Array_Ptr;
             Inc : constant Natural :=
@@ -164,7 +164,7 @@ package body Generic_Unbounded_Array is
                       => Null_Element
                       );
             end if;
-            New_Vector (Container.Vector'range) :=
+            New_Vector (Container.Vector'Range) :=
                Container.Vector.all;
             Delete (Container.Vector);
             Container.Vector := New_Vector;

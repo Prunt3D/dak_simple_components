@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Spring, 2002       --
 --                                                                    --
---                                Last revision :  10:00 19 May 2022  --
+--                                Last revision :  11:58 28 Mar 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -301,7 +301,7 @@ package body Generic_Set is
    begin
       Inserted := False;
       Insert (Container, Item, Inserted, Location);
-      Inserted := not Inserted;
+      Inserted := Location < 0 and then not Inserted;
    end Insert;
 
    procedure Remove

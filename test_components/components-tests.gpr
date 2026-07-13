@@ -54,6 +54,8 @@ project Components.Tests is
           "test_linked_lists_scheduler.adb",
           "test_linked_lists_scheduler.ads",
           "test_linked_lists_scheduler_test.adb",
+          "test_lock_free_fifo.adb",
+          "test_lock_free_fifo_instantiations.ads",
           "test_my_string-handle.adb",
           "test_my_string-handle.ads",
           "test_my_string.ads", 
@@ -62,6 +64,9 @@ project Components.Tests is
           "test_object.adb",
           "test_object.ads",
           "test_parser_stream_io.adb",
+          "test_patterns.adb",
+          "test_patterns_instantiations.adb",
+          "test_patterns_instantiations.ads",
           "test_persistent_file_storage.adb",
           "test_persistent_file_storage.ads",
           "test_persistent_memory_pool.adb",
@@ -95,6 +100,9 @@ project Components.Tests is
           "test_synchronization_events_array.ads",
           "test_synchronization_pulse_events.ads",
           "test_transactional_blocking_files.adb",
+          "test_unbounded_integers.adb",
+          "test_unbounded_rationals.adb",
+          "test_unbounded_unsigneds.adb",
           "test_utf8_tables.adb",
           "test_utf8_tables_table.adb",
           "test_utf8_tables_table.ads"
@@ -121,6 +129,8 @@ project Components.Tests is
           "test_interprocess_synchronization.adb",
           "test_linked_lists.adb",
           "test_linked_lists_scheduler_test.adb",
+          "test_lock_free_fifo.adb",
+          "test_patterns.adb",
           "test_parser_stream_io.adb",
           "test_persistent_memory_pool.adb",
           "test_persistent_storage.adb",
@@ -133,6 +143,9 @@ project Components.Tests is
           "test_storage_streams.adb",
           "test_synchronization_events.adb",
           "test_transactional_blocking_files.adb",
+          "test_unbounded_integers.adb",
+          "test_unbounded_rationals.adb",
+          "test_unbounded_unsigneds.adb",
           "test_utf8_tables.adb"
        );
    for Object_Dir use Components.Object_Dir_Path;

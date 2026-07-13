@@ -3,7 +3,7 @@
 --  Implementation                                 Luebeck            --
 --                                                 Winter, 2012       --
 --                                                                    --
---                                Last revision :  10:37 10 Mar 2023  --
+--                                Last revision :  15:55 04 Jan 2026  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -53,6 +53,9 @@ package body GNAT.Sockets.Server is
 
    procedure Free is
       new Ada.Unchecked_Deallocation (Encoder'Class, Encoder_Ptr);
+
+   procedure Free is
+      new Ada.Unchecked_Deallocation (String, String_Ptr);
 
    procedure Activated (Client : in out Connection) is
    begin
@@ -159,6 +162,10 @@ package body GNAT.Sockets.Server is
          Address,
          Max_Connect_No
       );
+      if Listener.Factory.Keep_Host_Name then
+         Free (Client.Client_Host);
+         Client.Client_Host := new String'(Host);
+      end if;
       Client.Session         := Session_Disconnected;
       Client.Client          := True;
       Client.Connect_No      := 0;
@@ -474,6 +481,7 @@ package body GNAT.Sockets.Server is
    begin
       Close (Client.Socket);
       Free (Client.Transport);
+      Free (Client.Client_Host);
       Object.Finalize (Object.Entity (Client));
    end Finalize;
 
@@ -525,6 +533,12 @@ package body GNAT.Sockets.Server is
       return 0.02;
    end Get_IO_Timeout;
 
+   function Get_Keep_Host_Name (Factory : Connections_Factory)
+      return Boolean is
+   begin
+      return Factory.Keep_Host_Name;
+   end Get_Keep_Host_Name;
+
    procedure Get_Occurrence
              (  Client : Connection;
                 Source : out Exception_Occurrence
@@ -554,6 +568,15 @@ package body GNAT.Sockets.Server is
       Address.Port := Listener.Port;
       return Address;
    end Get_Server_Address;
+
+   function Get_Session_Host (Client : Connection) return String is
+   begin
+      if Client.Client_Host = null then
+         return "";
+      else
+         return Client.Client_Host.all;
+      end if;
+   end Get_Session_Host;
 
    function Get_Session_State (Client : Connection)
       return Session_State is
@@ -1700,6 +1723,14 @@ package body GNAT.Sockets.Server is
       Save_Occurrence (Client.Last_Error, Error);
       Client.Failed := True;
    end Set_Failed;
+
+   procedure Set_Keep_Host_Name
+             (  Factory : in out Connections_Factory;
+                Enable  : Boolean
+             )  is
+   begin
+      Factory.Keep_Host_Name := Enable;
+   end Set_Keep_Host_Name;
 
    procedure Set_Overlapped_Size
              (  Client : in out Connection;

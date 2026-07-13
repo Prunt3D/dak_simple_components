@@ -3,7 +3,7 @@
 --     Generic_Indefinite_FIFO                     Luebeck            --
 --  Interface                                      Summer, 2008       --
 --                                                                    --
---                                Last revision :  16:40 15 Oct 2020  --
+--                                Last revision :  11:58 28 Mar 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -137,9 +137,7 @@ package Generic_Indefinite_FIFO is
 private
    type Buffer is array (Storage_Offset range <>) of Storage_Element;
    type FIFO_Ptr is access all FIFO'Class;
-   type FIFO (Size : Storage_Count) is
-      new Root_Storage_Pool with
-   record
+   type FIFO (Size : Storage_Count) is new Root_Storage_Pool with record
       Free    : Storage_Count := 1;
       First   : Storage_Count := 1;
       Cut_Off : Storage_Count := Size + 1;

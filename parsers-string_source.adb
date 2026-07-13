@@ -3,7 +3,7 @@
 --     Parsers.String_Source                       Luebeck            --
 --  Implementation                                 Winter, 2004       --
 --                                                                    --
---                                Last revision :  11:37 13 Oct 2007  --
+--                                Last revision :  11:24 12 Jul 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -80,6 +80,18 @@ package body Parsers.String_Source is
       return (Code.Last, Code.Pointer - Code.Last);
    end Link;
 
+   function Direct_Link (Code : Source; From, To : Integer)
+      return Location is
+   begin
+      if (  From < Code.Last
+         or else (To < From and then From - To > 1)
+         or else To > Code.Text'Last
+         )  then
+         raise Ada.IO_Exceptions.Layout_Error;
+      end if;
+      return (From, To - From + 1);
+   end Direct_Link;
+
    function "&" (Left, Right : Location) return Location is
       From : constant Integer := Integer'Min (Left.From, Right.From);
       To   : constant Integer :=
@@ -101,12 +113,18 @@ package body Parsers.String_Source is
       Code.Pointer := Code.Last;
    end Reset_Pointer;
 
-   procedure Set_Pointer (Code : in out Source; Pointer : Integer) is 
+   procedure Set_Pointer
+             (  Code    : in out Source;
+                Pointer : Integer;
+                Advance : Boolean := True
+             )  is 
    begin
       if Pointer not in Code.Last..Code.Text'Last + 1 then
          raise Ada.IO_Exceptions.Layout_Error;
       end if;
-      Code.Last    := Code.Pointer;
+      if Advance then
+         Code.Last := Code.Pointer;
+      end if;
       Code.Pointer := Pointer;
    end Set_Pointer;
 

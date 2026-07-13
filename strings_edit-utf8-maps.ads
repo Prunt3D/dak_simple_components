@@ -3,7 +3,7 @@
 --     Strings_Edit.UTF8.Maps                      Luebeck            --
 --  Interface                                      Spring, 2008       --
 --                                                                    --
---                                Last revision :  11:26 29 May 2020  --
+--                                Last revision :  11:03 04 Dec 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -327,6 +327,35 @@ package Strings_Edit.UTF8.Maps is
 --
    type Unicode_Mapping is private;
 --
+-- Compare -- Comparison using Unicode mapping
+--
+   function Compare
+            (  Left, Right : UTF8_Code_Point_Array;
+               Map         : Unicode_Mapping
+            )  return Precedence;
+--
+-- Get -- Get text
+--
+--    Source  - The string
+--    Text    - To check
+--    Pointer - To start at, advanced when result is True
+--    Map      - Used to convert characters before comparison
+--
+-- Returns :
+--
+--    True if Prefix is a prefix of Source
+--
+-- Exceptions :
+--
+--    Data_Error - Illegal UTF-8 strings
+--
+   function Get
+            (  Source  : String;
+               Text    : String;
+               Pointer : access Integer;
+               Map     : Unicode_Mapping
+            )  return Boolean;
+--
 -- Is_Prefix -- Test if Prefix is a prefix of Text
 --
 --    Prefix    - To check
@@ -577,7 +606,7 @@ private
    procedure Finalize (Set : in out Unicode_Set);
 
    Null_Set : constant Unicode_Set :=
-                (Ada.Finalization.Controlled with null);
+                 (Ada.Finalization.Controlled with null);
 
    Universal_Set : constant Unicode_Set :=
                    (  Ada.Finalization.Controlled

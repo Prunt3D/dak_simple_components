@@ -3,7 +3,7 @@
 --  Test                                           Luebeck            --
 --                                                 Spring, 2008       --
 --                                                                    --
---                                Last revision :  23:22 29 Sep 2017  --
+--                                Last revision :  11:48 10 Aug 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -106,6 +106,26 @@ begin
    if Data /= 6 then
       Error ("Cannot parse item with spaces");
    end if;
+
+   Erase (Folder);
+   Add (Folder, "case",     1);
+   Add (Folder, "declare",  2);
+   Add (Folder, "if",       3);
+   Add (Folder, "raise",    4);
+   Add (Folder, "for",      5);
+   Add (Folder, "parallel", 6);
+   Pointer := 2;
+   Get ("[parallel (A.B)", Pointer, Folder, Data);
+   if Data /= 6 then
+      Error ("Cannot parse 'parallel'");
+   elsif Pointer /= 10 then
+      Error
+      (  "Cannot parse 'parallel' Pointer"
+      &  Integer'Image (Pointer)
+      &  " /= 10 (expected)"
+      );
+   end if;
+
    Put_Line ("... Done");
 exception
    when Error : others =>

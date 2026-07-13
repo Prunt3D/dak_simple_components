@@ -30,7 +30,7 @@ package body Persistent.Streams is
 
    procedure Dispose (Stream : in out Persistent_Stream) is
    begin
-      Stream.Dispose (Stream.Read_Position);
+      Dispose (Stream, Stream.Read_Position);
    end Dispose;
 
    procedure Dispose
@@ -412,7 +412,10 @@ package body Persistent.Streams is
             end if;
          end;
       end loop;
-      raise Data_Error with "Reading beyond the file end";
+      Raise_Exception
+      (  Data_Error'Identity,
+         "Reading beyond the file end"
+      );
    end Read;
 
    procedure Rewind (Stream : in out Persistent_Stream) is

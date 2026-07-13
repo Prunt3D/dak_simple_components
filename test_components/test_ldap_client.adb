@@ -3,7 +3,7 @@
 --  Test data client                               Luebeck            --
 --                                                 Summer, 2019       --
 --                                                                    --
---                                Last revision :  18:41 01 Aug 2019  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -33,11 +33,8 @@ with GNAT.Sockets.Server;          use GNAT.Sockets.Server;
 with GNAT.Sockets.Server.Handles;  use GNAT.Sockets.Server.Handles;
 with Interfaces;                   use Interfaces;
 with Strings_Edit;                 use Strings_Edit;
-with Strings_Edit.Floats;          use Strings_Edit.Floats;
 with Strings_Edit.Integers;        use Strings_Edit.Integers;
-with Strings_Edit.Quoted;          use Strings_Edit.Quoted;
 
-with Ada.Numerics.Discrete_Random;
 with GNAT.Exception_Traces;
 with GNAT.Sockets.Connection_State_Machine.ASN1.Distinguished_Names;
 with GNAT.Sockets.Connection_State_Machine.ASN1.Strings;
@@ -58,8 +55,6 @@ begin
 --if false then
    declare
       use GNAT.Sockets.Connection_State_Machine;
-      use ASN1.Distinguished_Names;
-      use ASN1.Strings;
 
       function Hex (Data : Stream_Element_Array) return String is
          Result  : String (1..Data'Length * 3);

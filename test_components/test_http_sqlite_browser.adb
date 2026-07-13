@@ -3,7 +3,7 @@
 --     Test_HTTP_SQLite_Browser                    Luebeck            --
 --  HTTP SQLite3 browsing server test              Winter, 2014       --
 --                                                                    --
---                                Last revision :  23:22 29 Sep 2017  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -25,10 +25,9 @@
 --  executable file might be covered by the GNU Public License.       --
 --____________________________________________________________________--
 
-with Ada.Exceptions;              use Ada.Exceptions;
-with Ada.Text_IO;                 use Ada.Text_IO;
---with GNAT.Exception_Traces;       use GNAT.Exception_Traces;
-with Test_HTTP_SQLite_Servers;    use Test_HTTP_SQLite_Servers;
+with Ada.Exceptions;             use Ada.Exceptions;
+with Ada.Text_IO;                use Ada.Text_IO;
+with Test_HTTP_SQLite_Servers;   use Test_HTTP_SQLite_Servers;
 
 with GNAT.Sockets.Server.Pooled;
 

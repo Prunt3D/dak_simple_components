@@ -3,7 +3,7 @@
 --  Test data client                               Luebeck            --
 --                                                 Winter, 2012       --
 --                                                                    --
---                                Last revision :  12:18 18 May 2019  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -52,7 +52,6 @@ with GNAT.Sockets.Connection_State_Machine.Little_Endian.
 with GNAT.Sockets.Connection_State_Machine.Little_Endian.Unsigneds;
 with GNAT.Sockets.Connection_State_Machine.Terminated_Strings;
 with GNAT.Sockets.Connection_State_Machine.Variable_Length_Strings;
-with GNAT.Sockets.Server;
 
 procedure Test_Data_Client is
    use Connection_State_Machine;

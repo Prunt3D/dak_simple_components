@@ -3,7 +3,7 @@
 --     Test_Operation_Stack                        Luebeck            --
 --  Implementation                                 Winter, 2004       --
 --                                                                    --
---                                Last revision :  20:47 23 Jun 2010  --
+--                                Last revision :  22:23 22 Jun 2025  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -28,7 +28,6 @@
 with Operation_Stack_Expressions;  use Operation_Stack_Expressions;
 
 procedure Test_Operation_Stack is
-   use Operation_Stack_Expressions.Raw_Descriptors;
    use Operation_Stack_Expressions.Descriptor_Stacks.Operation;
    use Operation_Stack_Expressions.Integer_Stack.Segmented_Stack;
 

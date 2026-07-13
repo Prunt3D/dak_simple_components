@@ -3,7 +3,7 @@
 --  test                                           Luebeck            --
 --                                                 Winter, 2022       --
 --                                                                    --
---                                Last revision :  11:44 11 Sep 2023  --
+--                                Last revision :  14:35 02 Jul 2024  --
 --                                                                    --
 --  This  library  is  free software; you can redistribute it and/or  --
 --  modify it under the terms of the GNU General Public  License  as  --
@@ -213,6 +213,65 @@ begin
       Worker.Disengage;
       Py.Eval_RestoreThread (State);
       Put_Line ("Python GIL retaken");
+   end;
+   declare
+      use Py;
+      GIL    : Global_Interpreter_Lock;
+      Module : Handle;
+      Result : Handle;
+      A, B   : Handle;
+      X      : Handle;
+      Foo    : Handle;
+      Value  : long;
+   begin
+      Compile
+      (  "super_class = ''"                 & LF &
+         "class A :"                        & LF &
+         "   def __init__ (self):"          & LF &
+         "      self.a = 124"               & LF &
+         "   def Foo (self):"               & LF &
+         "      return self.a"              & LF &
+         "class B (A):"                     & LF &
+         "   def Foo (self):"               & LF &
+         "      return super().Foo () + 2",
+         "super_class.py",
+         Module,
+         Result
+      );
+      Result := Object_CallNoArgs (Result);
+      A := Object_GetAttrString (Module, "A");
+      B := Object_GetAttrString (Module, "B");
+      X := Object_CallNoArgs (B);
+      Foo := Object_GetAttrString (X, "Foo");
+      Value := Long_AsLong (Object_CallNoArgs (Foo));
+      if Value /= 126 then
+         Raise_Exception
+         (  Data_Error'Identity,
+            "Expected 126 got" & long'Image (Value));
+      end if;
+      Foo := Object_Super (X, "Foo");
+      Value := Long_AsLong (Object_CallNoArgs (Foo));
+      if Value /= 124 then
+         Raise_Exception
+         (  Data_Error'Identity,
+            "Expected 124 got" & long'Image (Value));
+      end if;
+   end;
+   declare
+      use Py;
+      GIL     : Py.Global_Interpreter_Lock;
+      X, Y, Z : Handle;
+      Value   : long;
+   begin
+      X := Long_FromLong (1);
+      Y := Long_FromLong (2);
+      Z := Number_Add (X, Y);
+      Value := Long_AsLong (Z);
+      if Value /= 3 then
+         Raise_Exception
+         (  Data_Error'Identity,
+            "Expected 3 got" & long'Image (Value));
+      end if;
    end;
    if Py.FinalizeEx < 0 then
       Put_Line ("Python finalization error");
