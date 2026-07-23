@@ -156,7 +156,9 @@ project Strings_Edit is
    case Arch is
       when "auto" =>
          case Target_Triplet is
-            when "aarch64-linux-gnu" =>
+            when "aarch64-linux-gnu"   |
+                 "aarch64-linux"       |
+                 "aarch64-darwin"      =>
                Arch := "aarch64";
             when "arm-linux"           |
                  "arm-linux-gnueabi"   |
@@ -205,6 +207,7 @@ project Strings_Edit is
       when "auto" =>
          case Target_Triplet is
             when "aarch64-linux-gnu"   |
+                 "aarch64-linux"       |
                  "arm-linux"           |
                  "arm-linux-gnueabi"   |
                  "arm-linux-gnueabihf" |
@@ -220,7 +223,8 @@ project Strings_Edit is
                Target_OS := "Linux";
             when "x86_64-apple-darwin" |
                  "x86_64-darwin"       |
-                 "x86-darwin"          =>
+                 "x86-darwin"          |
+                 "aarch64-darwin"      =>
                Target_OS := "OSX";
             when "x86_64-freebsd"      |
                  "i686-freebsd"        =>
