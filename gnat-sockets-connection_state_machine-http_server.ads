@@ -1731,6 +1731,8 @@ private
            Header_Line,           -- Request header field line
            Body_Data,             -- Data of a body
            Chunk_Line,            -- Header of a chunk
+           Chunk_Data_CRLF,       -- CRLF after the data of a chunk
+           Chunk_Trailer,         -- Trailer line after the last chunk
            Multipart_Preamble,    -- Multipart preamble
            Multipart_Header_Line, -- Header of multipart body
            Multipart_Body_Data,   -- Data of a multipart body
@@ -1951,6 +1953,7 @@ private
       Chain        : Action := null;
       Connection   : Connection_Flags := 0;
       Chunked      : Boolean := False; -- Using chunked transfer
+      Chunked_Body : Boolean := False; -- Receiving a chunked body
       Trace_Body   : Boolean := False;
       Trace_Header : Boolean := False;
       Validate_CGI : Boolean := False;
@@ -1996,6 +1999,8 @@ private
 
    procedure Process_Body_Tail    (Client : in out HTTP_Client'Class);
    procedure Process_Chunk_Line   (Client : in out HTTP_Client'Class);
+   procedure Process_Chunk_CRLF   (Client : in out HTTP_Client'Class);
+   procedure Process_Trailer_Line (Client : in out HTTP_Client'Class);
    procedure Process_Epilogue     (Client : in out HTTP_Client'Class);
    procedure Process_Header_Line  (Client : in out HTTP_Client'Class);
    procedure Process_Part_Header  (Client : in out HTTP_Client'Class);
@@ -2055,6 +2060,15 @@ private
              );
 
    procedure Cleanup_Body_Part (Client : in out HTTP_Client'Class);
+--
+-- Complete_Body -- Report the body as received
+--
+--    Client - The HTTP client connection object
+--
+-- This  procedure  commits the  content  destination  if  any  and calls
+-- Body_Received for the stream or content the body was received into.
+--
+   procedure Complete_Body (Client : in out HTTP_Client'Class);
    procedure Continue (Client : in out HTTP_Client; Chain : Action);
    procedure Content_Chunk (Client : in out HTTP_Client'Class);
    procedure Message_Chunk (Client : in out HTTP_Client'Class);

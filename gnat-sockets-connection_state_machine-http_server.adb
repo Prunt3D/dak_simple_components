@@ -423,6 +423,22 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
       return True;
    end Compare;
 
+   procedure Complete_Body (Client : in out HTTP_Client'Class) is
+   begin
+      if Client.Stream /= null then
+         Body_Received (Client, Client.Stream.all); -- Dispatching call
+         Client.Stream := null;
+      elsif Client.Destination /= null then
+         Commit (Client.Destination.all);
+         if Client.Destination = Client.CGI'Unchecked_Access then
+            Body_Received (Client, Client.CGI.Keys.all);
+         else
+            Body_Received (Client, Client.Destination.all);
+         end if;
+         Client.Destination := null;
+      end if;
+   end Complete_Body;
+
    procedure Continue (Client : in out HTTP_Client; Chain : Action) is
    begin
       Client.Chain := Chain;
@@ -993,6 +1009,15 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
                       );
                    end if;
                end if;
+            elsif Header = Transfer_Encoding_Header then
+               if Compare (Trim (Value, SpaceAndTab), "chunked") then
+                  Client.Chunked_Body := True;
+               else
+                  Raise_Exception
+                  (  Data_Error'Identity,
+                     "Unsupported transfer coding " & Quote (Value, ''')
+                  );
+               end if;
             end if;
          end if;
       end Get_Text;
@@ -1273,21 +1298,10 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
          Base    => 16,
          First   => 0
       );
-      Client.Expecting := Client.Chunk_Type; -- Restore expected type
-      if Client.Data_Length = 0 then
-         Client.Chunked := False; -- End of chunked receive
-         if Client.Stream /= null then
-            Body_Received (Client, Client.Stream.all);
-            Client.Stream := null;
-         elsif Client.Destination /= null then
-            Commit (Client.Destination.all);
-            if Client.Destination = Client.CGI'Unchecked_Access then
-               Body_Received (Client, Client.CGI.Keys.all);
-            else
-               Body_Received (Client, Client.Destination.all);
-            end if;
-            Client.Destination := null;
-         end if;
+      if Client.Data_Length = 0 then -- The last chunk, trailer follows
+         Client.Expecting := Chunk_Trailer;
+      else
+         Client.Expecting := Client.Chunk_Type; -- Restore expected type
       end if;
    exception
       when Data_Error | Constraint_Error | End_Error =>
@@ -1296,6 +1310,18 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
             "Malformed data chunk header line"
          );
    end Process_Chunk_Line;
+
+   procedure Process_Chunk_CRLF (Client : in out HTTP_Client'Class) is
+      Request : String renames Client.Line.Value (1..Client.Line.Last);
+   begin
+      if Request'Length > 0 then
+         Raise_Exception
+         (  Data_Error'Identity,
+            "Missing CRLF after the data of a chunk"
+         );
+      end if;
+      Client.Expecting := Chunk_Line;
+   end Process_Chunk_CRLF;
 
    procedure Process_Epilogue (Client : in out HTTP_Client'Class) is
    begin
@@ -1321,11 +1347,22 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
                end if;
             end loop;
          end if;
+         if Client.Chunked_Body and then Client.Data_Length > 0 then
+            Raise_Exception
+            (  Data_Error'Identity,
+               "Content-Length is not allowed with chunked transfer coding"
+            );
+         end if;
          if Client.Boundary /= null then -- Multipart body
-            Client.Expecting := Multipart_Preamble;
             Client.Multipart := (others => null);
             Client.Part_Mark := null;
-         elsif Client.Chunked then -- Chunked transfer-encoded body
+            if Client.Chunked_Body then -- Chunked transfer-encoded body
+               Client.Chunk_Type := Multipart_Preamble;
+               Client.Expecting  := Chunk_Line;
+            else
+               Client.Expecting := Multipart_Preamble;
+            end if;
+         elsif Client.Chunked_Body then -- Chunked transfer-encoded body
             Do_Body (Client);
             Client.Chunk_Type := Body_Data;
             Client.Expecting  := Chunk_Line;
@@ -1374,6 +1411,31 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
          Trace (Client, "Malformed header " & Request);
       end if;
    end Process_Header_Line;
+
+   procedure Process_Trailer_Line (Client : in out HTTP_Client'Class) is
+      Request : String renames Client.Line.Value (1..Client.Line.Last);
+   begin
+      if Request'Length > 0 then -- Trailer fields are ignored
+         if Client.Trace_Header then
+            Trace (Client, "Trailer field ignored: " & Quote (Request, '''));
+         end if;
+         return;
+      end if;
+      Client.Chunked_Body := False; -- End of chunked receive
+      case Client.Chunk_Type is
+         when Body_Data =>
+            Complete_Body (Client);
+            Cleanup_Body_Part (Client);
+            Process_Request (Client);
+         when Multipart_Epilogue =>
+            Process_Request (Client);
+         when others =>
+            Raise_Exception
+            (  Data_Error'Identity,
+               "Malformed multipart body"
+            );
+      end case;
+   end Process_Trailer_Line;
 
    procedure Process_Part_Header (Client : in out HTTP_Client'Class) is
       Request : String renames Client.Line.Value (1..Client.Line.Last);
@@ -1549,6 +1611,7 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
       end if;
       Client.Expecting          := Header_Line;
       Client.Chunked            := False;
+      Client.Chunked_Body       := False;
       Client.Connection         := 0;
       Client.Status             := null;
       Client.Stream             := null;
@@ -2431,34 +2494,11 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
                   end if;
                end if;
                if Client.Data_Length = 0 then -- End of chunk
-                  if Client.Chunked then -- Chunked receipt
+                  if Client.Chunked_Body then -- Chunked receipt
                      Client.Chunk_Type := Body_Data;
-                     Client.Expecting  := Chunk_Line;
+                     Client.Expecting  := Chunk_Data_CRLF;
                   else -- Explicit length body
-                     if Client.Stream /= null then
-                        Body_Received -- Dispatching call
-                        (  HTTP_Client'Class (Client),
-                           Client.Stream.all
-                        );
-                        Client.Stream := null;
-                     elsif Client.Destination /= null then
-                        Commit (Client.Destination.all);
-                        if (  Client.Destination
-                           =  Client.CGI'Unchecked_Access
-                           )
-                        then
-                           Body_Received -- Dispatching call
-                           (  HTTP_Client'Class (Client),
-                              Client.CGI.Keys.all
-                           );
-                        else
-                           Body_Received -- Dispatching call
-                           (  HTTP_Client'Class (Client),
-                              Client.Destination.all
-                           );
-                        end if;
-                        Client.Destination := null;
-                     end if;
+                     Complete_Body (Client);
                      Cleanup_Body_Part (Client);
                      Process_Request (Client);
                   end if;
@@ -2472,9 +2512,9 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
                   end if;
                end if;
                if Client.Data_Length = 0 then -- End of chunk
-                  if Client.Chunked then -- Chunked receipt
-                     Client.Chunk_Type := Multipart_Body_Data;
-                     Client.Expecting  := Chunk_Line;
+                  if Client.Chunked_Body then -- Chunked receipt
+                     Client.Chunk_Type := Client.Expecting;
+                     Client.Expecting  := Chunk_Data_CRLF;
                   else -- Explicit length
                      if Client.Expecting = Multipart_Epilogue then
                         Process_Request (Client);
@@ -2534,6 +2574,20 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
                   Data,
                   Pointer,
                   Process_Chunk_Line'Access
+               );
+            when Chunk_Data_CRLF =>
+               Receive_Header_Line
+               (  Client,
+                  Data,
+                  Pointer,
+                  Process_Chunk_CRLF'Access
+               );
+            when Chunk_Trailer =>
+               Receive_Header_Line
+               (  Client,
+                  Data,
+                  Pointer,
+                  Process_Trailer_Line'Access
                );
             when WebSocket_Header =>
                declare
@@ -2910,9 +2964,9 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
          end if;
       end loop Get_Header_Line;
       if Client.Data_Length = 0 then -- End of chunk
-         if Client.Chunked then -- Chunked receipt
+         if Client.Chunked_Body then -- Chunked receipt
             Client.Chunk_Type := Client.Expecting;
-            Client.Expecting  := Chunk_Line;
+            Client.Expecting  := Chunk_Data_CRLF;
          else -- Explicit length
             if Client.Expecting = Multipart_Epilogue then
                Client.Expecting  := Header_Line;
