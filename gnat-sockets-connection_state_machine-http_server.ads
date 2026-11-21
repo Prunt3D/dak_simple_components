@@ -1206,7 +1206,8 @@ package GNAT.Sockets.Connection_State_Machine.HTTP_Server is
 -- to write here  using information from the header fields.  The default
 -- implementation  does nothing  which has  the effect  that the body is
 -- received but ignored. For multipart bodies Do_Body is called for each
--- part.
+-- part. When an HTTP/1.1 request expects 100-continue,  the 100 Continue
+-- interim response is sent before Do_Body is called.
 --
    procedure Do_Body (Client : in out HTTP_Client);
 --

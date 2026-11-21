@@ -1389,6 +1389,23 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
                "Content-Length is not allowed with chunked transfer coding"
             );
          end if;
+         if (  Client.Version >= 1.1
+            and then
+               (  Client.Chunked_Body
+               or else
+                  Client.Data_Length > 0
+               )
+            and then
+               Compare
+               (  Trim (Get_Header (Client, Expect_Header), SpaceAndTab),
+                  "100-continue"
+            )  )  then
+            --
+            -- The client waits for this interim response before it
+            -- sends the body, or for a while
+            --
+            Send (Client, "HTTP/1.1 100 Continue" & CRLF & CRLF);
+         end if;
          if Client.Boundary /= null then -- Multipart body
             Client.Multipart := (others => null);
             Client.Part_Mark := null;
