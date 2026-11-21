@@ -1618,6 +1618,7 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
       Client.Source             := null;
       Client.Destination        := null;
       Client.Boundary           := null;
+      Client.Split_Line         := False;
       Client.Data_Length        := 0;
       Client.Body_Content.First := null;
       Client.Headers            := (others => null);
@@ -2904,6 +2905,14 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
                 Handler : Completion
              )  is
    begin
+      if Client.Split_Line then -- Resume the line the last chunk ended in
+         Client.Split_Line := False;
+         Client.Line.Value (1..Client.Split_Last) :=
+            Client.Split_Value (1..Client.Split_Last);
+         Client.Line.Last    := Client.Split_Last;
+         Client.Data.Current := Client.Split_Item;
+         Client.State        := Client.Split_State;
+      end if;
       Get_Header_Line : while Client.Data_Length > 0 loop
          if Client.Data_Length > Data'Last - Pointer + 1 then
             declare
@@ -2954,7 +2963,8 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
                Client.Data.Current := Client.Data.Current + 1;
             end loop;
          else
-            exit when Pointer > Data'Last;
+            exit when Pointer > Data'Last;    -- All data consumed
+            exit when Client.Data_Length = 0; -- Chunk ends in the line
             Raise_Exception
             (  Status_Error'Identity,
                (  "Unprocessed data left when after return from "
@@ -2965,6 +2975,20 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
       end loop Get_Header_Line;
       if Client.Data_Length = 0 then -- End of chunk
          if Client.Chunked_Body then -- Chunked receipt
+            if Client.Data.Current /= 1 or else Client.State /= 0 then
+               --
+               -- The chunk ends inside a line.  Keep the line until  the
+               -- next chunk, as the chunk framing lines come first
+               --
+               Client.Split_Line  := True;
+               Client.Split_Item  := Client.Data.Current;
+               Client.Split_State := Client.State;
+               Client.Split_Last  := Client.Line.Last;
+               Client.Split_Value (1..Client.Line.Last) :=
+                  Client.Line.Value (1..Client.Line.Last);
+               Client.Data.Current := 1;
+               Client.State        := 0;
+            end if;
             Client.Chunk_Type := Client.Expecting;
             Client.Expecting  := Chunk_Data_CRLF;
          else -- Explicit length

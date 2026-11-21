@@ -1980,6 +1980,14 @@ private
          -- Parsed line, CR LF terminated
       Line         : Dynamic_String_Data_Item;
       LF           : Expected_Item (1);
+         -- A multipart line interrupted by the end of a chunk. The line
+         -- parser is needed for the chunk framing lines in between,  so
+         -- its state is kept here until the next chunk resumes the line
+      Split_Line   : Boolean := False;
+      Split_Item   : Data_Item_Offset;
+      Split_State  : Stream_Element_Offset;
+      Split_Last   : Natural := 0;
+      Split_Value  : String (1..Request_Length);
 
       Status       : Status_Line_Ptr;
       Part_Mark    : Text_Ptr;               -- Mark of part headers
