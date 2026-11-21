@@ -2498,6 +2498,14 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
    begin
       Pointer := Data'First;
       while Pointer <= Data'Last loop
+         --
+         -- While the reply  to the previous request  is still  being sent
+         -- or waits for its content, the next request stays in the input
+         -- buffer.  Processing it would replace the state of the request
+         -- being replied to, and its reply could be sent first
+         --
+         exit when Client.Expecting = Request_Line
+           and then Client.Chain /= null;
          case Client.Expecting is
             when Body_Data => -- Single body receipt
                if Client.Data_Length > 0 then -- Receiving the body
