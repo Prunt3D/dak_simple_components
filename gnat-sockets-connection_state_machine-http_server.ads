@@ -1954,6 +1954,7 @@ private
       Connection   : Connection_Flags := 0;
       Chunked      : Boolean := False; -- Using chunked transfer
       Chunked_Body : Boolean := False; -- Receiving a chunked body
+      Length_Field : Boolean := False; -- Content-Length received
       Trace_Body   : Boolean := False;
       Trace_Header : Boolean := False;
       Validate_CGI : Boolean := False;

@@ -960,6 +960,18 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
          Ptr : Header_Ptr;
       begin
          if Client.Headers (Header) /= null then
+            if Header = Transfer_Encoding_Header then
+               --
+               -- A  repeated  field  adds  its codings to  the list,  but
+               -- chunked is the only coding supported and it is applied
+               -- once at most
+               --
+               Raise_Exception
+               (  Data_Error'Identity,
+                  (  "Unsupported transfer coding "
+                  &  Quote (Client.Headers (Header).all & ", " & Value, ''')
+               )  );
+            end if;
             return; -- The value is already set
          end if;
          if Header = Sec_WebSocket_Key_Header then
@@ -1029,8 +1041,22 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
             Client.Date := To_Time (Value);
             Client.Specific (Date_Header) := True;
          when Content_Length_Header =>
-            Client.Data_Length :=
-               Stream_Element_Offset_Edit.Value (Value);
+            declare
+               Length : constant Stream_Element_Count :=
+                        Stream_Element_Offset_Edit.Value (Value);
+            begin
+               if (  Client.Length_Field
+                  and then
+                     Length /= Client.Data_Length
+                  )  then
+                  Raise_Exception
+                  (  Data_Error'Identity,
+                     "Conflicting Content-Length fields"
+                  );
+               end if;
+               Client.Data_Length  := Length;
+               Client.Length_Field := True;
+            end;
          when Last_Modified_Header =>
             Client.If_Modified_Since := To_Time (Value);
             Client.Specific (Last_Modified_Header) := True;
@@ -1357,7 +1383,7 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
                end if;
             end loop;
          end if;
-         if Client.Chunked_Body and then Client.Data_Length > 0 then
+         if Client.Chunked_Body and then Client.Length_Field then
             Raise_Exception
             (  Data_Error'Identity,
                "Content-Length is not allowed with chunked transfer coding"
@@ -1622,6 +1648,7 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
       Client.Expecting          := Header_Line;
       Client.Chunked            := False;
       Client.Chunked_Body       := False;
+      Client.Length_Field       := False;
       Client.Connection         := 0;
       Client.Status             := null;
       Client.Stream             := null;
