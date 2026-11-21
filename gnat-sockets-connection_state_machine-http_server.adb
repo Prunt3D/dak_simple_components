@@ -1291,6 +1291,12 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
       Request : String renames Client.Line.Value (1..Client.Line.Last);
       Pointer : Integer := Request'First;
    begin
+      if (  Pointer > Request'Last
+         or else
+            not Is_Hexadecimal_Digit (Request (Pointer))
+         )  then
+         raise Data_Error; -- No chunk size
+      end if;
       Get
       (  Source  => Request,
          Pointer => Pointer,
@@ -1298,6 +1304,10 @@ package body GNAT.Sockets.Connection_State_Machine.HTTP_Server is
          Base    => 16,
          First   => 0
       );
+      Get (Request, Pointer, SpaceAndTab);
+      if Pointer <= Request'Last and then Request (Pointer) /= ';' then
+         raise Data_Error; -- Not the start of a chunk extension
+      end if;
       if Client.Data_Length = 0 then -- The last chunk, trailer follows
          Client.Expecting := Chunk_Trailer;
       else
